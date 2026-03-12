@@ -1,0 +1,9 @@
+requests
+feedparser
+beautifulsoup4
+lxml
+pandas
+numpy
+scikit-learn
+scipy
+python-dotenv

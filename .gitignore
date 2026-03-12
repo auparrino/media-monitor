@@ -1,0 +1,18 @@
+# API keys — never commit
+.env
+
+# Database (regenerated locally / by CI)
+data/news.db
+
+# Build artifacts
+output/
+__pycache__/
+*.pyc
+*.pyo
+
+# Screenshot (large binary, regenerated)
+*_screenshot.png
+
+# IDE
+.vscode/
+.idea/
