@@ -4,6 +4,7 @@ import os
 import re
 import json
 import sqlite3
+import time
 from datetime import datetime, timedelta
 from collections import Counter
 
@@ -91,6 +92,12 @@ def load_articles():
     df["published_at"] = pd.to_datetime(df["published_at"], utc=True, errors="coerce")
     df["published_at"] = df["published_at"].dt.tz_localize(None)
     df["date"] = df["published_at"].dt.date
+    # Only keep articles scraped in the last 36 hours
+    df["scraped_at"] = pd.to_datetime(df["scraped_at"], errors="coerce")
+    cutoff = datetime.now() - timedelta(hours=36)
+    recent = df[df["scraped_at"] >= cutoff]
+    if len(recent) > 0:
+        df = recent
     return df
 
 
@@ -401,7 +408,7 @@ def cluster_stories(df):
             "categories": categories,
             "lead": cluster_rows[0].title,
             "title": _generate_story_title(cluster_rows),
-            "summary": _generate_story_summary(cluster_rows),
+            "summary": None,
             "size": len(cluster_rows),
             "multi": len(sources) >= 2,
             "noise": is_noise,
@@ -409,6 +416,17 @@ def cluster_stories(df):
         })
 
     clusters.sort(key=lambda c: (c["multi"], len(c["sources"]), c["size"]), reverse=True)
+
+    # Generate summaries only for top multi-source stories (limits API calls)
+    summary_count = 0
+    for c in clusters:
+        if not c["multi"] or c["noise"] or summary_count >= 12:
+            break
+        c["summary"] = _generate_story_summary(c["articles"])
+        if c["summary"]:
+            summary_count += 1
+        time.sleep(1)  # rate-limit friendly
+
     return clusters
 
 
