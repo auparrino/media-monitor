@@ -608,7 +608,7 @@ def generate_dashboard():
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cono Sur Policy Monitor &mdash; {now_short}</title>
+<title>Media Monitor &mdash; Argentina, Paraguay &amp; Uruguay &mdash; {now_short}</title>
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{
@@ -848,7 +848,7 @@ a:hover {{ text-decoration: underline; }}
 <div class="letterhead">
     <div class="lh-top">
         <div>
-            <div class="lh-title">CONO SUR POLICY MONITOR</div>
+            <div class="lh-title">MEDIA MONITOR — Argentina, Paraguay &amp; Uruguay</div>
             <div class="lh-sub">{COUNTRY_FLAGS['argentina']} Argentina &middot; {COUNTRY_FLAGS['uruguay']} Uruguay &middot; {COUNTRY_FLAGS['paraguay']} Paraguay</div>
         </div>
         <div class="lh-date">{now_str}</div>
@@ -872,7 +872,7 @@ a:hover {{ text-decoration: underline; }}
 </div>
 
 <div class="doc-footer">
-    <span>CONO SUR POLICY MONITOR</span>
+    <span>MEDIA MONITOR — Argentina, Paraguay &amp; Uruguay</span>
     <span>{now_short} | {total} articles, {sources} sources</span>
 </div>
 
