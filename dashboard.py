@@ -124,6 +124,16 @@ _TITLE_PROMPT = (
     "Solo respondé con el título, nada más."
 )
 
+_SUMMARY_PROMPT = (
+    "Sos un editor de un briefing diplomático. "
+    "A partir de los siguientes titulares que cubren el mismo evento, "
+    "escribí UN SOLO párrafo de resumen breve (3 oraciones, máximo 400 caracteres). "
+    "Explicá qué pasó y por qué importa. "
+    "Sé factual, muy conciso y usá un tono informativo neutro. "
+    "No uses comillas, no inventes datos que no estén en los titulares. "
+    "Solo respondé con el párrafo, nada más."
+)
+
 
 def _llm_synthesize_title(headlines):
     """Call LLM API to synthesize a title. Tries Groq first, then Gemini."""
@@ -177,6 +187,58 @@ def _llm_synthesize_title(headlines):
     return None
 
 
+def _llm_synthesize_summary(headlines):
+    """Call LLM API to synthesize a paragraph summary. Tries Groq first, then Gemini."""
+    bullet_list = "\n".join(f"- {h}" for h in headlines)
+    user_msg = f"Titulares:\n{bullet_list}"
+
+    # Try Groq (Llama 3)
+    if GROQ_API_KEY:
+        try:
+            resp = http_requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [
+                        {"role": "system", "content": _SUMMARY_PROMPT},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": 300,
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            text = resp.json()["choices"][0]["message"]["content"].strip()
+            text = text.strip('"\'""«»\n ')
+            if 50 < len(text) < 600:
+                return text
+        except Exception:
+            pass
+
+    # Try Gemini
+    if GEMINI_API_KEY:
+        try:
+            resp = http_requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"parts": [{"text": f"{_SUMMARY_PROMPT}\n\n{user_msg}"}]}],
+                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 300},
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            text = text.strip('"\'""«»\n ')
+            if 50 < len(text) < 600:
+                return text
+        except Exception:
+            pass
+
+    return None
+
+
 def _generate_story_title(articles):
     """Generate a synthesized story title.
 
@@ -223,6 +285,14 @@ def _generate_story_title(articles):
             base = base[:cut] + "..."
 
     return base
+
+
+def _generate_story_summary(articles):
+    """Generate an LLM paragraph summary for a multi-source cluster."""
+    if len(articles) < 2:
+        return None
+    titles = list(dict.fromkeys(art.title for art in articles))
+    return _llm_synthesize_summary(titles[:6])
 
 
 def _avg_linkage_cluster(titles_norm, kw_sets, threshold, min_kw_overlap):
@@ -331,6 +401,7 @@ def cluster_stories(df):
             "categories": categories,
             "lead": cluster_rows[0].title,
             "title": _generate_story_title(cluster_rows),
+            "summary": _generate_story_summary(cluster_rows),
             "size": len(cluster_rows),
             "multi": len(sources) >= 2,
             "noise": is_noise,
@@ -426,6 +497,7 @@ def build_stories(clusters):
                 <span class="story-sources">{len(c['sources'])} fuentes</span>
             </div>
             <div class="story-title">{c['title']}</div>
+            {'<div class="story-summary">' + c['summary'] + '</div>' if c.get('summary') else ''}
             <div class="story-body">{source_lines}</div>
         </div>"""
 
@@ -642,6 +714,17 @@ body {{
     margin-bottom: 4px;
     padding-bottom: 4px;
     border-bottom: 1px dotted #ddd;
+}}
+.story-summary {{
+    font-size: 11.5px;
+    font-style: italic;
+    color: #555;
+    line-height: 1.45;
+    margin: 4px 0 6px 0;
+    padding: 6px 10px;
+    background: #f8f6f0;
+    border-left: 3px solid #669BBC;
+    border-radius: 2px;
 }}
 .story-body {{
     padding: 2px 0;
