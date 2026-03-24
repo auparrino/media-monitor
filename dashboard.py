@@ -132,13 +132,15 @@ _TITLE_PROMPT = (
 )
 
 _SUMMARY_PROMPT = (
-    "Sos un editor de un briefing diplomático. "
+    "Sos un redactor de cable de agencia de noticias. "
     "A partir de los siguientes titulares que cubren el mismo evento, "
     "escribí UN SOLO párrafo de resumen breve (3 oraciones, máximo 400 caracteres). "
-    "Explicá qué pasó y por qué importa. "
-    "Sé factual, muy conciso y usá un tono informativo neutro. "
+    "Limitáte estrictamente a los hechos: qué pasó, quién, dónde, cuándo. "
+    "NO editoralices, NO opines, NO interpretes, NO uses frases como "
+    "'destaca la importancia', 'plantea preocupaciones', 'tiene el potencial', "
+    "'es relevante porque', 'pone a prueba', 'refleja'. "
     "No uses comillas, no inventes datos que no estén en los titulares. "
-    "Solo respondé con el párrafo, nada más."
+    "Solo respondé con el párrafo fáctico, nada más."
 )
 
 
