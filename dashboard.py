@@ -132,15 +132,15 @@ _TITLE_PROMPT = (
 )
 
 _SUMMARY_PROMPT = (
-    "Sos un redactor de cable de agencia de noticias. "
-    "A partir de los siguientes titulares que cubren el mismo evento, "
-    "escribí UN SOLO párrafo de resumen breve (3 oraciones, máximo 400 caracteres). "
-    "Limitáte estrictamente a los hechos: qué pasó, quién, dónde, cuándo. "
-    "NO editoralices, NO opines, NO interpretes, NO uses frases como "
-    "'destaca la importancia', 'plantea preocupaciones', 'tiene el potencial', "
-    "'es relevante porque', 'pone a prueba', 'refleja'. "
-    "No uses comillas, no inventes datos que no estén en los titulares. "
-    "Solo respondé con el párrafo fáctico, nada más."
+    "You are a wire-service news writer. "
+    "From the following Spanish-language headlines covering the same event, "
+    "write ONE short summary paragraph IN ENGLISH (3 sentences, max 400 characters). "
+    "Stick strictly to the facts: what happened, who, where, when. "
+    "Do NOT editorialize, do NOT interpret, do NOT use phrases like "
+    "'highlights the importance', 'raises concerns', 'has the potential', "
+    "'is relevant because', 'puts to the test', 'reflects'. "
+    "Do not use quotes, do not invent facts not present in the headlines. "
+    "Reply with the factual paragraph only, nothing else."
 )
 
 
