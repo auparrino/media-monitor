@@ -195,34 +195,36 @@ def _llm_synthesize_title(headlines):
 
 
 def _llm_synthesize_summary(headlines):
-    """Call LLM API to synthesize a paragraph summary. Tries Groq first, then Gemini."""
+    """Call LLM API to synthesize a paragraph summary. Tries Groq (with retry), then Gemini."""
     bullet_list = "\n".join(f"- {h}" for h in headlines)
     user_msg = f"Titulares:\n{bullet_list}"
 
-    # Try Groq (Llama 3)
+    # Try Groq (Llama 3) — up to 2 attempts
     if GROQ_API_KEY:
-        try:
-            resp = http_requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [
-                        {"role": "system", "content": _SUMMARY_PROMPT},
-                        {"role": "user", "content": user_msg},
-                    ],
-                    "temperature": 0.3,
-                    "max_tokens": 300,
-                },
-                timeout=15,
-            )
-            resp.raise_for_status()
-            text = resp.json()["choices"][0]["message"]["content"].strip()
-            text = text.strip('"\'""«»\n ')
-            if 50 < len(text) < 600:
-                return text
-        except Exception:
-            pass
+        for attempt in range(2):
+            try:
+                resp = http_requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    json={
+                        "model": "llama-3.1-8b-instant",
+                        "messages": [
+                            {"role": "system", "content": _SUMMARY_PROMPT},
+                            {"role": "user", "content": user_msg},
+                        ],
+                        "temperature": 0.3,
+                        "max_tokens": 300,
+                    },
+                    timeout=15,
+                )
+                resp.raise_for_status()
+                text = resp.json()["choices"][0]["message"]["content"].strip()
+                text = text.strip('"\'""«»\n ')
+                if 50 < len(text) < 600:
+                    return text
+            except Exception:
+                if attempt == 0:
+                    time.sleep(2)
 
     # Try Gemini
     if GEMINI_API_KEY:
@@ -418,14 +420,10 @@ def cluster_stories(df):
     clusters.sort(key=lambda c: (c["multi"], len(c["sources"]), c["size"]), reverse=True)
 
     # Generate summaries only for top multi-source stories (limits API calls)
-    summary_count = 0
-    for c in clusters:
-        if not c["multi"] or c["noise"] or summary_count >= 12:
-            break
+    to_summarize = [c for c in clusters if c["multi"] and not c["noise"]][:12]
+    for c in to_summarize:
         c["summary"] = _generate_story_summary(c["articles"])
-        if c["summary"]:
-            summary_count += 1
-        time.sleep(1)  # rate-limit friendly
+        time.sleep(1.5)  # rate-limit friendly
 
     return clusters
 
