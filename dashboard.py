@@ -405,10 +405,10 @@ def _fetch_article_body(url):
 
 
 def _fetch_bodies_for_cluster(articles):
-    """Fetch article bodies for a cluster (max 4 articles to limit time)."""
+    """Fetch article bodies for all articles in a cluster."""
     bodies = []
     urls_tried = set()
-    for art in articles[:4]:
+    for art in articles:
         if art.url in urls_tried:
             continue
         urls_tried.add(art.url)
@@ -562,30 +562,53 @@ def cluster_stories(df):
 def build_overview(clusters, df):
     """One-line overview per country from top stories.
 
-    Avoids repeating the same international story for multiple countries.
-    Prefers stories with domestic sources (not just wire/international).
+    Prioritizes domestic politics/economics over international stories.
+    Avoids repeating the same story for multiple countries.
     """
     lines = {}
     used_titles = set()
 
     for country in COUNTRIES:
+        # Pass 1: domestic-only stories (politica/economia, not internacional)
         for c in clusters:
             if country not in c["countries"] or not c["multi"] or c["noise"]:
                 continue
-            # Skip if we already used this exact story for another country
             if c["title"] in used_titles:
                 continue
-            # Prefer stories that have a domestic source for this country
-            has_domestic = any(
-                r.country == country for r in c["articles"]
-            )
-            if has_domestic:
+            # Must have domestic articles from this country
+            domestic_arts = [r for r in c["articles"]
+                            if r.country == country and r.category != "internacional"]
+            # Skip clusters that are purely international
+            is_intl_only = all(cat == "internacional" for cat in c["categories"])
+            if domestic_arts and not is_intl_only:
                 lines[country] = c["title"]
                 used_titles.add(c["title"])
                 break
 
+        # Pass 2: any domestic multi-source story (including internacional if covered locally)
         if country not in lines:
-            # Fallback: first non-noise article from this country
+            for c in clusters:
+                if country not in c["countries"] or not c["multi"] or c["noise"]:
+                    continue
+                if c["title"] in used_titles:
+                    continue
+                has_domestic = any(r.country == country for r in c["articles"])
+                if has_domestic:
+                    lines[country] = c["title"]
+                    used_titles.add(c["title"])
+                    break
+
+        # Pass 3: single-source fallback from this country, prefer non-international
+        if country not in lines:
+            cdf = df[df["country"] == country]
+            for _, row in cdf.iterrows():
+                if (not _is_noise(row["title"]) and row["title"] not in used_titles
+                        and row["category"] != "internacional"):
+                    lines[country] = row["title"]
+                    used_titles.add(row["title"])
+                    break
+
+        if country not in lines:
             cdf = df[df["country"] == country]
             for _, row in cdf.iterrows():
                 if not _is_noise(row["title"]) and row["title"] not in used_titles:
@@ -785,7 +808,6 @@ def generate_dashboard():
     n_multi = len([c for c in clusters if c["multi"] and not c["noise"]])
 
     overview = build_overview(clusters, df)
-    stats_bar = _build_stats_bar(df)
     stories = build_stories(clusters)
     also_reported = "".join(build_also_reported(df, clusters, c) for c in COUNTRIES)
 
@@ -1121,7 +1143,6 @@ a:hover {{ text-decoration: underline; }}
     <div class="sec-head">1. Overview</div>
     <p class="sec-desc">The most important story of the day for each country at a glance.</p>
     {overview}
-    {stats_bar}
 
     <div class="sec-head">2. Key Stories ({n_multi} multi-source stories)</div>
     <p class="sec-desc">News events picked up by multiple outlets. The more sources covering a story, the higher it ranks. Each entry shows how different newsrooms framed the same event.</p>
