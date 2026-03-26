@@ -1,4 +1,4 @@
-"""RSS scraper with fallback to BeautifulSoup. Category = source section."""
+"""RSS scraper with Playwright-enhanced HTML fallback. Category = source section."""
 
 import os
 import time
@@ -8,6 +8,41 @@ from datetime import datetime
 import requests
 import feedparser
 from bs4 import BeautifulSoup
+
+# Playwright browser — lazy-loaded, shared across all feeds in a single run
+_pw_instance = None
+_pw_browser = None
+
+
+def _get_playwright_browser():
+    """Return a shared Playwright browser, launching it on first call."""
+    global _pw_instance, _pw_browser
+    if _pw_browser is not None:
+        return _pw_browser
+    try:
+        from playwright.sync_api import sync_playwright
+        _pw_instance = sync_playwright().start()
+        _pw_browser = _pw_instance.chromium.launch(headless=True)
+        return _pw_browser
+    except Exception:
+        return None
+
+
+def _close_playwright():
+    """Shut down the shared Playwright browser if it was started."""
+    global _pw_instance, _pw_browser
+    if _pw_browser:
+        try:
+            _pw_browser.close()
+        except Exception:
+            pass
+        _pw_browser = None
+    if _pw_instance:
+        try:
+            _pw_instance.stop()
+        except Exception:
+            pass
+        _pw_instance = None
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "news.db")
 
@@ -198,30 +233,83 @@ def _fetch_html(page_url, source_name, country, category):
     return articles
 
 
+def _fetch_html_playwright(page_url, source_name, country, category):
+    """Scrape headlines using Playwright (JS-rendered). Falls back to _fetch_html."""
+    browser = _get_playwright_browser()
+    if browser is None:
+        return _fetch_html(page_url, source_name, country, category)
+
+    articles = []
+    try:
+        page = browser.new_page()
+        page.set_extra_http_headers({"User-Agent": HEADERS["User-Agent"]})
+        page.goto(page_url, wait_until="domcontentloaded", timeout=20000)
+        page.wait_for_timeout(2000)
+
+        base_url = "/".join(page_url.split("/")[:3])
+        seen = set()
+
+        # Broad selector: all anchor tags in article-like containers + headlines
+        for el in page.query_selector_all("a"):
+            try:
+                link = el.get_attribute("href") or ""
+                if not link or link == "#" or link.startswith("javascript:"):
+                    continue
+                title = el.inner_text().strip()
+                # Also check if the link wraps a heading
+                if not title or len(title) < 20:
+                    heading = el.query_selector("h1, h2, h3, h4, span")
+                    if heading:
+                        title = heading.inner_text().strip()
+            except Exception:
+                continue
+            if not title or len(title) < 20 or title in seen:
+                continue
+            if not link.startswith("http"):
+                link = base_url.rstrip("/") + "/" + link.lstrip("/")
+            seen.add(title)
+            articles.append({
+                "source": source_name,
+                "country": country,
+                "title": title,
+                "url": link,
+                "published_at": datetime.now().isoformat(),
+                "category": category,
+            })
+
+        page.close()
+    except Exception:
+        # If Playwright fails for this page, fall back to requests
+        return _fetch_html(page_url, source_name, country, category)
+
+    # If Playwright got nothing, try requests as last resort
+    if not articles:
+        return _fetch_html(page_url, source_name, country, category)
+
+    return articles
+
+
 def scrape_source(source):
-    """Scrape all feeds for a source. RSS first, HTML fallback if RSS yields nothing."""
+    """Scrape all feeds for a source. RSS first, then Playwright HTML to complement."""
     all_articles = []
     seen_urls = set()
     rss_feeds = [f for f in source["feeds"] if f["type"] == "rss"]
     html_feeds = [f for f in source["feeds"] if f["type"] == "html"]
 
     # Try RSS feeds first
-    rss_got_results = False
     for feed in rss_feeds:
         arts = _fetch_rss(feed["url"], source["name"], source["country"], feed["category"])
         for a in arts:
             if a["url"] not in seen_urls:
                 seen_urls.add(a["url"])
                 all_articles.append(a)
-        if arts:
-            rss_got_results = True
         time.sleep(0.5)
 
-    # HTML fallback only if RSS got nothing
-    if not rss_got_results:
-        print("HTML fallback...", end=" ")
+    # Always run Playwright HTML to capture JS-rendered headlines RSS may miss
+    if html_feeds:
+        print("+PW...", end=" ")
         for feed in html_feeds:
-            arts = _fetch_html(feed["url"], source["name"], source["country"], feed["category"])
+            arts = _fetch_html_playwright(feed["url"], source["name"], source["country"], feed["category"])
             for a in arts:
                 if a["url"] not in seen_urls:
                     seen_urls.add(a["url"])
@@ -278,6 +366,7 @@ def run_scraper():
         total = conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0]
         print(f"   DB ahora tiene {total} articulos (con demo data)")
 
+    _close_playwright()
     conn.close()
 
 

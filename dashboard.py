@@ -143,6 +143,20 @@ _SUMMARY_PROMPT = (
     "Reply with the factual paragraph only, nothing else."
 )
 
+_SUMMARY_WITH_BODY_PROMPT = (
+    "You are a wire-service news writer. "
+    "From the following Spanish-language headlines AND article excerpts covering the same event, "
+    "write ONE short summary paragraph IN ENGLISH (3 sentences, max 400 characters). "
+    "Use the article excerpts to add specific details (names, numbers, dates) "
+    "that are not in the headlines alone. "
+    "Stick strictly to the facts: what happened, who, where, when. "
+    "Do NOT editorialize, do NOT interpret, do NOT use phrases like "
+    "'highlights the importance', 'raises concerns', 'has the potential', "
+    "'is relevant because', 'puts to the test', 'reflects'. "
+    "Do not use quotes, do not invent facts not present in the sources. "
+    "Reply with the factual paragraph only, nothing else."
+)
+
 
 def _llm_synthesize_title(headlines):
     """Call LLM API to synthesize a title. Tries Groq first, then Gemini."""
@@ -250,6 +264,62 @@ def _llm_synthesize_summary(headlines):
     return None
 
 
+def _llm_synthesize_summary_with_body(headlines, bodies):
+    """Synthesize summary using headlines + article body excerpts."""
+    bullet_list = "\n".join(f"- {h}" for h in headlines)
+    body_text = "\n\n".join(bodies[:3])  # max 3 bodies to fit context
+    user_msg = f"Titulares:\n{bullet_list}\n\nExcerpts:\n{body_text}"
+
+    # Try Groq first
+    if GROQ_API_KEY:
+        for attempt in range(2):
+            try:
+                resp = http_requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    json={
+                        "model": "llama-3.1-8b-instant",
+                        "messages": [
+                            {"role": "system", "content": _SUMMARY_WITH_BODY_PROMPT},
+                            {"role": "user", "content": user_msg},
+                        ],
+                        "temperature": 0.3,
+                        "max_tokens": 300,
+                    },
+                    timeout=15,
+                )
+                resp.raise_for_status()
+                text = resp.json()["choices"][0]["message"]["content"].strip()
+                text = text.strip('"\'""«»\n ')
+                if 50 < len(text) < 600:
+                    return text
+            except Exception:
+                if attempt == 0:
+                    time.sleep(2)
+
+    # Try Gemini
+    if GEMINI_API_KEY:
+        try:
+            resp = http_requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"parts": [{"text": f"{_SUMMARY_WITH_BODY_PROMPT}\n\n{user_msg}"}]}],
+                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": 300},
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            text = text.strip('"\'""«»\n ')
+            if 50 < len(text) < 600:
+                return text
+        except Exception:
+            pass
+
+    # Fall back to headline-only summary
+    return _llm_synthesize_summary(headlines)
+
+
 def _generate_story_title(articles):
     """Generate a synthesized story title.
 
@@ -298,11 +368,68 @@ def _generate_story_title(articles):
     return base
 
 
+def _fetch_article_body(url):
+    """Extract the first ~500 chars of article body text using Playwright."""
+    try:
+        from scraper import _get_playwright_browser
+        browser = _get_playwright_browser()
+        if not browser:
+            return ""
+        page = browser.new_page()
+        page.set_extra_http_headers({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        })
+        page.goto(url, wait_until="domcontentloaded", timeout=15000)
+        page.wait_for_timeout(1500)
+
+        # Try common article body selectors
+        for sel in ["article p", "[itemprop='articleBody'] p",
+                     "[class*='article-body'] p", "[class*='content'] p",
+                     "[class*='nota'] p", "[class*='story'] p", "main p"]:
+            elements = page.query_selector_all(sel)
+            if elements:
+                paragraphs = []
+                for el in elements[:6]:
+                    txt = el.inner_text().strip()
+                    if len(txt) > 30:
+                        paragraphs.append(txt)
+                if paragraphs:
+                    body = " ".join(paragraphs)[:800]
+                    page.close()
+                    return body
+
+        page.close()
+    except Exception:
+        pass
+    return ""
+
+
+def _fetch_bodies_for_cluster(articles):
+    """Fetch article bodies for a cluster (max 4 articles to limit time)."""
+    bodies = []
+    urls_tried = set()
+    for art in articles[:4]:
+        if art.url in urls_tried:
+            continue
+        urls_tried.add(art.url)
+        body = _fetch_article_body(art.url)
+        if body:
+            bodies.append(f"[{art.source}] {body}")
+    return bodies
+
+
 def _generate_story_summary(articles):
-    """Generate an LLM paragraph summary for a multi-source cluster."""
+    """Generate an LLM paragraph summary for a multi-source cluster.
+    Uses article bodies when available for richer context."""
     if len(articles) < 2:
         return None
     titles = list(dict.fromkeys(art.title for art in articles))
+
+    # Try to fetch article bodies for richer LLM context
+    bodies = _fetch_bodies_for_cluster(articles)
+    if bodies:
+        return _llm_synthesize_summary_with_body(titles[:6], bodies)
+
     return _llm_synthesize_summary(titles[:6])
 
 
@@ -476,6 +603,17 @@ def build_overview(clusters, df):
     return f'<ul class="overview-list">{items}</ul>'
 
 
+def _build_coverage_bar(n_sources, max_sources=14):
+    """Build a mini horizontal bar showing source coverage."""
+    pct = min(n_sources / max_sources * 100, 100)
+    color = "#C1121F" if n_sources >= 4 else "#669BBC" if n_sources >= 3 else "#999"
+    return (
+        f'<div class="coverage-bar">'
+        f'<div class="coverage-fill" style="width:{pct}%;background:{color}"></div>'
+        f'</div>'
+    )
+
+
 def build_stories(clusters):
     """Key stories section — clustered headlines showing editorial framing."""
     multi = [c for c in clusters if c["multi"] and not c["noise"]]
@@ -493,6 +631,9 @@ def build_stories(clusters):
 
         # Country flags
         flags = " ".join(COUNTRY_FLAGS.get(co, "") for co in c["countries"])
+
+        # Coverage bar
+        coverage = _build_coverage_bar(len(c["sources"]))
 
         # Source-by-source headlines with links
         source_lines = ""
@@ -512,7 +653,7 @@ def build_stories(clusters):
             <div class="story-header">
                 <span class="story-num">{i}</span>
                 {badges} {flags}
-                <span class="story-sources">{len(c['sources'])} fuentes</span>
+                <span class="story-sources">{len(c['sources'])} fuentes {coverage}</span>
             </div>
             <div class="story-title">{c['title']}</div>
             {'<div class="story-summary">' + c['summary'] + '</div>' if c.get('summary') else ''}
@@ -520,6 +661,53 @@ def build_stories(clusters):
         </div>"""
 
     return html
+
+
+def _build_stats_bar(df):
+    """Build a visual stats bar showing article distribution by category and country."""
+    # Category counts
+    cat_counts = df["category"].value_counts()
+    total = len(df)
+    cat_html = ""
+    for cat in ["politica", "economia", "internacional"]:
+        count = cat_counts.get(cat, 0)
+        pct = round(count / max(total, 1) * 100)
+        color = CATEGORY_COLORS.get(cat, "#999")
+        label = CATEGORY_LABELS.get(cat, cat)
+        cat_html += (
+            f'<div class="stat-item">'
+            f'<span class="badge" style="background:{color}">{label}</span>'
+            f'<div class="stat-bar"><div class="stat-fill" style="width:{pct}%;background:{color}"></div></div>'
+            f'<span class="stat-num">{count}</span>'
+            f'</div>'
+        )
+
+    # Country counts
+    country_counts = df["country"].value_counts()
+    country_html = ""
+    for country in COUNTRIES:
+        count = country_counts.get(country, 0)
+        pct = round(count / max(total, 1) * 100)
+        flag = COUNTRY_FLAGS[country]
+        country_html += (
+            f'<div class="stat-item">'
+            f'{flag}'
+            f'<div class="stat-bar"><div class="stat-fill" style="width:{pct}%;background:#003049"></div></div>'
+            f'<span class="stat-num">{count}</span>'
+            f'</div>'
+        )
+
+    return f"""
+    <div class="stats-row">
+        <div class="stats-group">
+            <div class="stats-label">By Category</div>
+            {cat_html}
+        </div>
+        <div class="stats-group">
+            <div class="stats-label">By Country</div>
+            {country_html}
+        </div>
+    </div>"""
 
 
 def build_also_reported(df, clusters, country, limit=10):
@@ -597,6 +785,7 @@ def generate_dashboard():
     n_multi = len([c for c in clusters if c["multi"] and not c["noise"]])
 
     overview = build_overview(clusters, df)
+    stats_bar = _build_stats_bar(df)
     stories = build_stories(clusters)
     also_reported = "".join(build_also_reported(df, clusters, c) for c in COUNTRIES)
 
@@ -770,6 +959,16 @@ body {{
 .sv-title:hover {{
     text-decoration: underline;
 }}
+.story-variant:hover {{
+    background: #faf8f4;
+    border-radius: 2px;
+}}
+.story {{
+    transition: box-shadow 0.2s;
+}}
+.story:hover {{
+    box-shadow: 0 1px 6px rgba(0,48,73,0.08);
+}}
 
 /* ── Badge ── */
 .badge {{
@@ -783,6 +982,68 @@ body {{
     letter-spacing: 0.3px;
     white-space: nowrap;
     vertical-align: middle;
+}}
+
+/* ── Coverage Bar ── */
+.coverage-bar {{
+    display: inline-block;
+    width: 40px;
+    height: 4px;
+    background: #e8e0d0;
+    border-radius: 2px;
+    vertical-align: middle;
+    margin-left: 4px;
+}}
+.coverage-fill {{
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s;
+}}
+
+/* ── Stats Bar ── */
+.stats-row {{
+    display: flex;
+    gap: 24px;
+    margin: 12px 0 6px;
+    padding: 10px 14px;
+    background: #f8f4ec;
+    border-radius: 4px;
+    border: 1px solid #e8e0d0;
+}}
+.stats-group {{
+    flex: 1;
+}}
+.stats-label {{
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: #999;
+    margin-bottom: 4px;
+}}
+.stat-item {{
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 0;
+}}
+.stat-bar {{
+    flex: 1;
+    height: 6px;
+    background: #e8e0d0;
+    border-radius: 3px;
+    overflow: hidden;
+}}
+.stat-fill {{
+    height: 100%;
+    border-radius: 3px;
+}}
+.stat-num {{
+    font-size: 10px;
+    font-weight: 700;
+    color: #555;
+    min-width: 24px;
+    text-align: right;
 }}
 
 /* ── Also Reported ── */
@@ -860,6 +1121,7 @@ a:hover {{ text-decoration: underline; }}
     <div class="sec-head">1. Overview</div>
     <p class="sec-desc">The most important story of the day for each country at a glance.</p>
     {overview}
+    {stats_bar}
 
     <div class="sec-head">2. Key Stories ({n_multi} multi-source stories)</div>
     <p class="sec-desc">News events picked up by multiple outlets. The more sources covering a story, the higher it ranks. Each entry shows how different newsrooms framed the same event.</p>
@@ -882,6 +1144,10 @@ a:hover {{ text-decoration: underline; }}
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         f.write(html)
+
+    # Close Playwright browser if it was used for body extraction
+    from scraper import _close_playwright
+    _close_playwright()
 
     print(f"   Dashboard generado: {OUTPUT_PATH}")
     print(f"      {total} articulos, {sources} fuentes, {n_multi} multi-source stories")
