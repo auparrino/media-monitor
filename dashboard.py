@@ -24,9 +24,9 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "data", "news.db")
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "output", "dashboard.html")
 
 CATEGORY_COLORS = {
-    "politica": "#780000",
-    "economia": "#C1121F",
-    "internacional": "#669BBC",
+    "politica": "#7d3c98",
+    "economia": "#d4a800",
+    "internacional": "#1a6fa3",
 }
 CATEGORY_LABELS = {
     "politica": "POL",
@@ -626,15 +626,11 @@ def build_overview(clusters, df):
     return f'<ul class="overview-list">{items}</ul>'
 
 
-def _build_coverage_bar(n_sources, max_sources=14):
-    """Build a mini horizontal bar showing source coverage."""
-    pct = min(n_sources / max_sources * 100, 100)
-    color = "#C1121F" if n_sources >= 4 else "#669BBC" if n_sources >= 3 else "#999"
-    return (
-        f'<div class="coverage-bar">'
-        f'<div class="coverage-fill" style="width:{pct}%;background:{color}"></div>'
-        f'</div>'
-    )
+def _build_coverage_dots(n_sources):
+    """Build dot indicators for source count — one filled dot per source."""
+    color = "#C1121F" if n_sources >= 5 else "#d4a800" if n_sources >= 3 else "rgba(0,48,73,0.35)"
+    dots = f'<span class="cov-dot" style="background:{color}"></span>' * n_sources
+    return f'<span class="coverage-dots">{dots}</span>'
 
 
 def build_stories(clusters):
@@ -648,15 +644,16 @@ def build_stories(clusters):
         # Category badges
         badges = ""
         for cat in c["categories"]:
-            color = CATEGORY_COLORS.get(cat, "#999")
+            color = CATEGORY_COLORS.get(cat, "rgba(0,48,73,0.40)")
             label = CATEGORY_LABELS.get(cat, cat)
-            badges += f'<span class="badge" style="background:{color}">{label}</span> '
+            text_color = "#003049" if color == "#d4a800" else "white"
+            badges += f'<span class="badge" style="background:{color};color:{text_color}">{label}</span> '
 
         # Country flags
         flags = " ".join(COUNTRY_FLAGS.get(co, "") for co in c["countries"])
 
-        # Coverage bar
-        coverage = _build_coverage_bar(len(c["sources"]))
+        # Coverage dots
+        coverage = _build_coverage_dots(len(c["sources"]))
 
         # Source-by-source headlines with links
         source_lines = ""
@@ -676,7 +673,7 @@ def build_stories(clusters):
             <div class="story-header">
                 <span class="story-num">{i}</span>
                 {badges} {flags}
-                <span class="story-sources">{len(c['sources'])} fuentes {coverage}</span>
+                <span class="story-sources">{len(c['sources'])} sources {coverage}</span>
             </div>
             <div class="story-title">{c['title']}</div>
             {'<div class="story-summary">' + c['summary'] + '</div>' if c.get('summary') else ''}
@@ -695,11 +692,12 @@ def _build_stats_bar(df):
     for cat in ["politica", "economia", "internacional"]:
         count = cat_counts.get(cat, 0)
         pct = round(count / max(total, 1) * 100)
-        color = CATEGORY_COLORS.get(cat, "#999")
+        color = CATEGORY_COLORS.get(cat, "rgba(0,48,73,0.40)")
         label = CATEGORY_LABELS.get(cat, cat)
+        text_color = "#003049" if color == "#d4a800" else "white"
         cat_html += (
             f'<div class="stat-item">'
-            f'<span class="badge" style="background:{color}">{label}</span>'
+            f'<span class="badge" style="background:{color};color:{text_color}">{label}</span>'
             f'<div class="stat-bar"><div class="stat-fill" style="width:{pct}%;background:{color}"></div></div>'
             f'<span class="stat-num">{count}</span>'
             f'</div>'
@@ -776,13 +774,14 @@ def build_also_reported(df, clusters, country, limit=10):
     rows_html = ""
     for row in remaining:
         cat = row["category"]
-        color = CATEGORY_COLORS.get(cat, "#999")
+        color = CATEGORY_COLORS.get(cat, "rgba(0,48,73,0.40)")
         label = CATEGORY_LABELS.get(cat, cat)
+        text_color = "#003049" if color == "#d4a800" else "white"
         date_str = row["published_at"].strftime("%d/%m") if pd.notna(row["published_at"]) else ""
         rows_html += f"""
         <div class="also-item">
             <span class="also-date">{date_str}</span>
-            <span class="badge" style="background:{color}">{label}</span>
+            <span class="badge" style="background:{color};color:{text_color}">{label}</span>
             <span class="also-source">{row['source']}</span>
             <a class="also-title" href="{row['url']}" target="_blank">{row['title']}</a>
         </div>"""
@@ -820,24 +819,27 @@ def generate_dashboard():
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Media Monitor &mdash; Argentina, Paraguay &amp; Uruguay &mdash; {now_short}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * {{ margin:0; padding:0; box-sizing:border-box; }}
 body {{
-    font-family: 'Segoe UI', Arial, Helvetica, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background: #FDF0D5;
-    color: #222;
+    color: #003049;
     line-height: 1.55;
-    font-size: 11.5px;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 0;
+    font-size: 13px;
+    max-width: 100%;
+    margin: 0;
+    padding: 0 32px;
 }}
 
 /* ── Letterhead ── */
 .letterhead {{
-    background: #003049;
-    padding: 22px 32px 16px;
-    color: white;
+    background: #FDF0D5;
+    padding: 16px 0 12px;
+    color: #003049;
+    border-bottom: 1px solid rgba(0,48,73,0.12);
 }}
 .lh-top {{
     display: flex;
@@ -845,49 +847,63 @@ body {{
     align-items: center;
 }}
 .lh-title {{
-    font-size: 20px;
-    font-weight: 800;
-    color: #FDF0D5;
-    letter-spacing: 2.5px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #003049;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
 }}
 .lh-sub {{
-    font-size: 11px;
-    color: #669BBC;
+    font-size: 10px;
+    color: rgba(0,48,73,0.60);
     font-weight: 600;
     letter-spacing: 1px;
     margin-top: 2px;
 }}
 .lh-date {{
-    font-size: 11px;
-    color: #669BBC;
+    font-size: 10px;
+    color: rgba(0,48,73,0.65);
     text-align: right;
+    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-weight: 700;
 }}
 
 /* ── Content ── */
 .content {{
-    padding: 14px 32px 16px;
-    background: white;
+    padding: 10px 0 12px;
+    background: #FDF0D5;
+}}
+.stories-grid {{
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}}
+.also-grid {{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
 }}
 
 /* ── Section headers ── */
 .sec-head {{
-    font-size: 11px;
+    font-size: 15px;
     font-weight: 700;
     color: #003049;
     text-transform: uppercase;
-    letter-spacing: 1.2px;
-    margin: 18px 0 8px;
+    letter-spacing: 1.5px;
+    margin: 14px 0 6px;
     padding-bottom: 4px;
-    border-bottom: 2px solid #C1121F;
+    border-bottom: 1px solid rgba(0,48,73,0.12);
 }}
-.sec-head:first-child {{ margin-top: 8px; }}
+.sec-head:first-child {{ margin-top: 4px; }}
 .sec-desc {{
-    font-size: 11px;
-    color: #555;
-    margin: 2px 0 10px;
-    padding: 6px 10px;
-    background: #f8f4ec;
-    border-radius: 3px;
+    font-size: 12px;
+    color: #003049;
+    margin: 2px 0 8px;
+    padding: 4px 8px;
+    background: rgba(0,48,73,0.04);
+    border: 1px solid rgba(0,48,73,0.08);
+    border-radius: 4px;
     line-height: 1.4;
 }}
 
@@ -896,25 +912,31 @@ body {{
     list-style: none;
     margin: 0;
     padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
 }}
 .overview-list li {{
-    padding: 5px 8px;
+    padding: 6px 10px;
     font-size: 12px;
     line-height: 1.4;
-    border-bottom: 1px solid #f0e8d8;
+    background: rgba(0,48,73,0.04);
+    border: 1px solid rgba(0,48,73,0.08);
+    border-radius: 4px;
 }}
-.overview-list li:last-child {{ border-bottom: none; }}
 
 /* ── Stories ── */
 .story {{
-    margin-bottom: 14px;
-    border-left: 3px solid #C1121F;
-    padding-left: 12px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: rgba(0,48,73,0.04);
+    border: 1px solid rgba(0,48,73,0.08);
+    border-radius: 4px;
 }}
 .story-header {{
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     margin-bottom: 4px;
     flex-wrap: wrap;
 }}
@@ -929,192 +951,209 @@ body {{
     font-size: 10px;
     font-weight: 700;
     flex-shrink: 0;
+    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
 }}
 .story-sources {{
-    font-size: 9.5px;
-    color: #999;
+    font-size: 9px;
+    color: rgba(0,48,73,0.65);
     margin-left: auto;
+    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    font-weight: 700;
 }}
 .story-title {{
     font-size: 13px;
     font-weight: 700;
     color: #003049;
     line-height: 1.35;
-    margin-bottom: 4px;
-    padding-bottom: 4px;
-    border-bottom: 1px dotted #ddd;
+    margin-bottom: 3px;
+    padding-bottom: 3px;
+    border-bottom: 1px solid rgba(0,48,73,0.12);
 }}
 .story-summary {{
-    font-size: 11.5px;
-    font-style: italic;
-    color: #555;
+    font-size: 12px;
+    color: #003049;
     line-height: 1.45;
-    margin: 4px 0 6px 0;
-    padding: 6px 10px;
-    background: #f8f6f0;
-    border-left: 3px solid #669BBC;
+    margin: 3px 0 5px 0;
+    padding: 5px 8px;
+    background: rgba(0,48,73,0.08);
+    border-left: 3px solid #1a6fa3;
     border-radius: 2px;
 }}
 .story-body {{
-    padding: 2px 0;
+    padding: 1px 0;
 }}
 .story-variant {{
     display: flex;
-    gap: 8px;
-    padding: 2px 0;
-    font-size: 11.5px;
+    gap: 6px;
+    padding: 1px 0;
+    font-size: 11px;
     line-height: 1.35;
     align-items: baseline;
 }}
 .sv-source {{
     font-weight: 700;
-    color: #780000;
-    font-size: 10px;
+    color: rgba(0,48,73,0.65);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     min-width: 90px;
     flex-shrink: 0;
 }}
 .sv-title {{
     flex: 1;
-    color: #222;
+    color: #003049;
     text-decoration: none;
 }}
 .sv-title:hover {{
     text-decoration: underline;
 }}
 .story-variant:hover {{
-    background: #faf8f4;
+    background: rgba(0,48,73,0.06);
     border-radius: 2px;
-}}
-.story {{
-    transition: box-shadow 0.2s;
-}}
-.story:hover {{
-    box-shadow: 0 1px 6px rgba(0,48,73,0.08);
 }}
 
 /* ── Badge ── */
 .badge {{
     display: inline-block;
-    padding: 1px 5px;
-    border-radius: 2px;
+    padding: 2px 10px;
+    border-radius: 9999px;
     color: white;
-    font-size: 8px;
-    font-weight: 700;
+    font-size: 9px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.5px;
     white-space: nowrap;
     vertical-align: middle;
+    border: 1px solid rgba(0,48,73,0.15);
 }}
 
-/* ── Coverage Bar ── */
-.coverage-bar {{
-    display: inline-block;
-    width: 40px;
-    height: 4px;
-    background: #e8e0d0;
-    border-radius: 2px;
+/* ── Coverage Dots ── */
+.coverage-dots {{
+    display: inline-flex;
+    gap: 2px;
     vertical-align: middle;
-    margin-left: 4px;
+    margin-left: 3px;
 }}
-.coverage-fill {{
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.3s;
+.cov-dot {{
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    display: inline-block;
 }}
 
 /* ── Stats Bar ── */
 .stats-row {{
     display: flex;
-    gap: 24px;
-    margin: 12px 0 6px;
-    padding: 10px 14px;
-    background: #f8f4ec;
+    gap: 16px;
+    margin: 8px 0 4px;
+    padding: 8px 12px;
+    background: rgba(0,48,73,0.04);
     border-radius: 4px;
-    border: 1px solid #e8e0d0;
+    border: 1px solid rgba(0,48,73,0.08);
 }}
 .stats-group {{
     flex: 1;
 }}
 .stats-label {{
-    font-size: 8.5px;
-    font-weight: 700;
+    font-size: 11px;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: #999;
-    margin-bottom: 4px;
+    letter-spacing: 1.5px;
+    color: rgba(0,48,73,0.65);
+    margin-bottom: 3px;
 }}
 .stat-item {{
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 2px 0;
+    gap: 5px;
+    padding: 1px 0;
 }}
 .stat-bar {{
     flex: 1;
-    height: 6px;
-    background: #e8e0d0;
-    border-radius: 3px;
+    height: 5px;
+    background: rgba(0,48,73,0.10);
+    border-radius: 9999px;
     overflow: hidden;
 }}
 .stat-fill {{
     height: 100%;
-    border-radius: 3px;
+    border-radius: 9999px;
 }}
 .stat-num {{
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 700;
-    color: #555;
+    color: #003049;
+    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
     min-width: 24px;
     text-align: right;
 }}
 
 /* ── Also Reported ── */
 .also-section {{
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }}
 .also-header {{
     font-size: 11px;
-    font-weight: 700;
-    color: #003049;
-    padding: 4px 0;
-    border-bottom: 1px solid #e0d8c8;
-    margin-bottom: 3px;
+    font-weight: 600;
+    color: rgba(0,48,73,0.65);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    padding: 3px 0;
+    border-bottom: 1px solid rgba(0,48,73,0.12);
+    margin-bottom: 2px;
 }}
 .also-item {{
     display: flex;
-    gap: 6px;
+    gap: 5px;
     padding: 2px 0;
     font-size: 11px;
     line-height: 1.35;
     align-items: baseline;
-    border-bottom: 1px dotted #ece4d4;
+    border-bottom: 1px solid rgba(0,48,73,0.06);
 }}
 .also-item:last-child {{ border-bottom: none; }}
-.also-date {{ color: #999; font-size: 9.5px; min-width: 32px; }}
-.also-source {{ font-weight: 600; color: #780000; font-size: 9.5px; min-width: 85px; flex-shrink: 0; }}
-.also-title {{ flex: 1; color: #222; text-decoration: none; }}
+.also-date {{ color: rgba(0,48,73,0.60); font-size: 10px; min-width: 32px; font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace; }}
+.also-source {{ font-weight: 600; color: rgba(0,48,73,0.65); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; min-width: 85px; flex-shrink: 0; }}
+.also-title {{ flex: 1; color: #003049; text-decoration: none; }}
 .also-title:hover {{ text-decoration: underline; }}
 
 /* ── Footer ── */
 .doc-footer {{
-    background: #003049;
-    padding: 10px 32px;
+    background: #FDF0D5;
+    padding: 8px 0;
     display: flex;
     justify-content: space-between;
     font-size: 9px;
-    color: #669BBC;
+    color: rgba(0,48,73,0.60);
+    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace;
+    border-top: 1px solid rgba(0,48,73,0.12);
 }}
 
-.muted {{ color: #999; font-style: italic; }}
+.muted {{ color: rgba(0,48,73,0.60); font-style: italic; }}
 a {{ color: inherit; text-decoration: none; }}
 a:hover {{ text-decoration: underline; }}
-.flag {{ width: 16px; height: 16px; vertical-align: middle; display: inline-block; }}
+.flag {{ width: 14px; height: 14px; vertical-align: middle; display: inline-block; }}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {{
+    body {{ padding: 0 12px; }}
+    .lh-top {{ flex-direction: column; align-items: flex-start; gap: 4px; }}
+    .lh-date {{ text-align: left; }}
+    .overview-list {{ grid-template-columns: 1fr; }}
+    .stories-grid {{ grid-template-columns: 1fr; }}
+    .also-grid {{ grid-template-columns: 1fr; }}
+    .story-header {{ gap: 4px; }}
+    .story-variant {{ flex-wrap: wrap; }}
+    .sv-source {{ min-width: 70px; }}
+    .also-item {{ flex-wrap: wrap; }}
+    .stats-row {{ flex-direction: column; gap: 8px; }}
+}}
 
 /* ── Print ── */
 @media print {{
     body {{ font-size: 10.5px; max-width: none; background: white; }}
-    .letterhead {{ padding: 14px 20px 10px; }}
-    .content {{ padding: 8px 20px 10px; }}
+    .letterhead {{ padding: 12px 20px 8px; }}
+    .content {{ padding: 6px 20px 8px; }}
     .story {{ break-inside: avoid; }}
     .also-section {{ break-inside: avoid; }}
     .letterhead, .badge, .story-num, .doc-footer {{
@@ -1146,11 +1185,11 @@ a:hover {{ text-decoration: underline; }}
 
     <div class="sec-head">2. Key Stories ({n_multi} multi-source stories)</div>
     <p class="sec-desc">News events picked up by multiple outlets. The more sources covering a story, the higher it ranks. Each entry shows how different newsrooms framed the same event.</p>
-    {stories}
+    <div class="stories-grid">{stories}</div>
 
     <div class="sec-head">3. Also Reported</div>
     <p class="sec-desc">Other noteworthy headlines from individual outlets that didn't appear in multiple sources.</p>
-    {also_reported}
+    <div class="also-grid">{also_reported}</div>
 
 </div>
 
