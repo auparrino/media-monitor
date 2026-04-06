@@ -69,6 +69,17 @@ NOISE_PATTERNS = [
     r"(apertura|clausura).*en vivo",
 ]
 
+# ── Ranking & merge tuning ─────────────────────────────────────────────
+MERGE_TITLE_SIM = 0.35        # cosine sim between cluster titles to trigger merge
+MERGE_KW_JACCARD = 0.50       # Jaccard sim between cluster keyword sets
+OVERVIEW_DOMESTIC_RATIO = 0.5  # min domestic fraction for overview selection
+OVERVIEW_COUNTRY_RATIO = 0.3   # min country fraction for overview selection
+RANK_DOMESTIC_BONUS = 2.0
+RANK_CONCENTRATION_BONUS = 1.5
+RANK_INTL_PENALTY = 2.0
+MIN_DOMESTIC_SLOTS = 8         # of 12 Key Stories slots reserved for domestic
+TOTAL_STORY_SLOTS = 12
+
 STOPWORDS = {
     "de", "la", "el", "en", "que", "y", "a", "los", "las", "del", "un", "una",
     "por", "con", "para", "se", "su", "al", "es", "lo", "no", "más", "mas",
@@ -478,6 +489,140 @@ def _avg_linkage_cluster(titles_norm, kw_sets, threshold, min_kw_overlap):
     return list(groups.values())
 
 
+def _domestic_ratio(cluster):
+    """Fraction of articles with category != 'internacional'."""
+    if not cluster["articles"]:
+        return 0.0
+    domestic = sum(1 for a in cluster["articles"] if a.category != "internacional")
+    return domestic / len(cluster["articles"])
+
+
+def _story_rank_score(cluster):
+    """Weighted score that corrects international bias.
+
+    Domestic stories get a bonus; purely-international stories covering
+    all 3 countries get a penalty so they don't crowd out local news.
+    """
+    base = len(cluster["sources"])
+    dr = _domestic_ratio(cluster)
+    domestic_bonus = dr * RANK_DOMESTIC_BONUS
+
+    country_counts = Counter(a.country for a in cluster["articles"])
+    max_share = max(country_counts.values()) / max(len(cluster["articles"]), 1)
+    concentration_bonus = max_share * RANK_CONCENTRATION_BONUS
+
+    n_countries = len(country_counts)
+    intl_penalty = RANK_INTL_PENALTY if (n_countries >= 3 and dr < 0.3) else 0
+
+    return base + domestic_bonus + concentration_bonus - intl_penalty
+
+
+def _merge_similar_clusters(clusters):
+    """Post-clustering merge: combine clusters about the same event.
+
+    Uses title cosine similarity + keyword Jaccard to detect duplicates.
+    Union-find handles transitive merges.  Zero LLM calls.
+    """
+    if len(clusters) < 2:
+        return clusters
+
+    # Build keyword sets from ALL article titles per cluster (broader than synth title)
+    cluster_kw = []
+    for c in clusters:
+        kw = set()
+        for art in c["articles"]:
+            kw |= _keywords(art.title)
+        cluster_kw.append(kw)
+
+    # TF-IDF on synthesised titles
+    titles_norm = [_normalize(c["title"]) for c in clusters]
+    vec = TfidfVectorizer(
+        token_pattern=r"[a-záéíóúñü]{3,}",
+        stop_words=list(STOPWORDS),
+    )
+    try:
+        tfidf = vec.fit_transform(titles_norm)
+        sim_matrix = cosine_similarity(tfidf)
+    except ValueError:
+        sim_matrix = np.zeros((len(clusters), len(clusters)))
+
+    # Union-find
+    parent = list(range(len(clusters)))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[ra] = rb
+
+    for i in range(len(clusters)):
+        for j in range(i + 1, len(clusters)):
+            # Skip if both are noise or singletons
+            if clusters[i]["noise"] and clusters[j]["noise"]:
+                continue
+            # Title cosine similarity
+            title_sim = sim_matrix[i, j]
+            # Keyword Jaccard
+            ki, kj = cluster_kw[i], cluster_kw[j]
+            jaccard = len(ki & kj) / max(len(ki | kj), 1)
+            if title_sim >= MERGE_TITLE_SIM or jaccard >= MERGE_KW_JACCARD:
+                union(i, j)
+
+    # Group by root
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for i in range(len(clusters)):
+        groups[find(i)].append(i)
+
+    merged = []
+    for members in groups.values():
+        if len(members) == 1:
+            merged.append(clusters[members[0]])
+            continue
+
+        # Merge: combine articles, take title from largest sub-cluster
+        all_articles = []
+        seen_urls = set()
+        best_idx = max(members, key=lambda m: clusters[m]["size"])
+        for m in members:
+            for art in clusters[m]["articles"]:
+                if art.url not in seen_urls:
+                    seen_urls.add(art.url)
+                    all_articles.append(art)
+
+        all_indices = set()
+        for m in members:
+            all_indices |= clusters[m]["indices"]
+
+        sources = sorted(set(a.source for a in all_articles))
+        countries = sorted(set(a.country for a in all_articles))
+        categories = sorted(set(a.category for a in all_articles))
+
+        noise_count = sum(1 for a in all_articles if _is_noise(a.title))
+        is_noise = noise_count > len(all_articles) * 0.5
+
+        merged.append({
+            "articles": all_articles,
+            "sources": sources,
+            "countries": countries,
+            "categories": categories,
+            "lead": clusters[best_idx]["lead"],
+            "title": clusters[best_idx]["title"],
+            "summary": None,
+            "size": len(all_articles),
+            "multi": len(sources) >= 2,
+            "noise": is_noise,
+            "indices": all_indices,
+        })
+
+    return merged
+
+
 def cluster_stories(df):
     """Two-pass clustering to group articles by event.
 
@@ -546,10 +691,13 @@ def cluster_stories(df):
             "indices": set(indices),
         })
 
-    clusters.sort(key=lambda c: (c["multi"], len(c["sources"]), c["size"]), reverse=True)
+    # ── Post-merge: combine clusters about the same event ──
+    clusters = _merge_similar_clusters(clusters)
+
+    clusters.sort(key=lambda c: (c["multi"], _story_rank_score(c)), reverse=True)
 
     # Generate summaries only for top multi-source stories (limits API calls)
-    to_summarize = [c for c in clusters if c["multi"] and not c["noise"]][:12]
+    to_summarize = [c for c in clusters if c["multi"] and not c["noise"]][:TOTAL_STORY_SLOTS]
     for c in to_summarize:
         c["summary"] = _generate_story_summary(c["articles"])
         time.sleep(1.5)  # rate-limit friendly
@@ -562,43 +710,55 @@ def cluster_stories(df):
 def build_overview(clusters, df):
     """One-line overview per country from top stories.
 
-    Prioritizes domestic politics/economics over international stories.
+    Uses domestic_ratio and country_ratio scoring to pick stories that
+    are truly ABOUT a country, not just covered BY its outlets.
     Avoids repeating the same story for multiple countries.
     """
     lines = {}
     used_titles = set()
 
     for country in COUNTRIES:
-        # Pass 1: domestic-only stories (politica/economia, not internacional)
+        # Pass 1: strict domestic — high domestic_ratio AND country_ratio
+        candidates = []
         for c in clusters:
             if country not in c["countries"] or not c["multi"] or c["noise"]:
                 continue
             if c["title"] in used_titles:
                 continue
-            # Must have domestic articles from this country
-            domestic_arts = [r for r in c["articles"]
-                            if r.country == country and r.category != "internacional"]
-            # Skip clusters that are purely international
-            is_intl_only = all(cat == "internacional" for cat in c["categories"])
-            if domestic_arts and not is_intl_only:
-                lines[country] = c["title"]
-                used_titles.add(c["title"])
-                break
+            country_arts = [a for a in c["articles"] if a.country == country]
+            if not country_arts:
+                continue
+            domestic_arts = [a for a in country_arts if a.category != "internacional"]
+            dr = len(domestic_arts) / len(country_arts)
+            cr = len(country_arts) / max(len(c["articles"]), 1)
+            if dr >= OVERVIEW_DOMESTIC_RATIO and cr >= OVERVIEW_COUNTRY_RATIO:
+                candidates.append((c, dr, cr))
 
-        # Pass 2: any domestic multi-source story (including internacional if covered locally)
+        if candidates:
+            candidates.sort(key=lambda x: (x[1], x[2], len(x[0]["sources"]), x[0]["size"]), reverse=True)
+            best = candidates[0][0]
+            lines[country] = best["title"]
+            used_titles.add(best["title"])
+
+        # Pass 2: relaxed — any multi-source cluster, sorted by country_ratio
         if country not in lines:
+            candidates = []
             for c in clusters:
                 if country not in c["countries"] or not c["multi"] or c["noise"]:
                     continue
                 if c["title"] in used_titles:
                     continue
-                has_domestic = any(r.country == country for r in c["articles"])
-                if has_domestic:
-                    lines[country] = c["title"]
-                    used_titles.add(c["title"])
-                    break
+                country_arts = [a for a in c["articles"] if a.country == country]
+                cr = len(country_arts) / max(len(c["articles"]), 1)
+                candidates.append((c, cr))
 
-        # Pass 3: single-source fallback from this country, prefer non-international
+            if candidates:
+                candidates.sort(key=lambda x: (x[1], len(x[0]["sources"]), x[0]["size"]), reverse=True)
+                best = candidates[0][0]
+                lines[country] = best["title"]
+                used_titles.add(best["title"])
+
+        # Pass 3: single-source fallback, prefer non-international
         if country not in lines:
             cdf = df[df["country"] == country]
             for _, row in cdf.iterrows():
@@ -634,13 +794,33 @@ def _build_coverage_dots(n_sources):
 
 
 def build_stories(clusters):
-    """Key stories section — clustered headlines showing editorial framing."""
+    """Key stories section — clustered headlines showing editorial framing.
+
+    Uses lane interleaving to guarantee domestic stories aren't drowned
+    out by international news that naturally accumulates more sources.
+    """
     multi = [c for c in clusters if c["multi"] and not c["noise"]]
     if not multi:
         return '<p class="muted">No multi-source stories identified in this cycle.</p>'
 
+    # Split into domestic and international lanes
+    domestic = [c for c in multi if _domestic_ratio(c) >= 0.5]
+    intl = [c for c in multi if _domestic_ratio(c) < 0.5]
+
+    # Fill slots: domestic first (up to MIN_DOMESTIC_SLOTS), then intl, then overflow
+    final = []
+    max_intl = TOTAL_STORY_SLOTS - MIN_DOMESTIC_SLOTS  # 4
+    final.extend(domestic[:MIN_DOMESTIC_SLOTS])
+    final.extend(intl[:max_intl])
+    # Fill remaining slots from whichever lane has leftovers
+    remaining = TOTAL_STORY_SLOTS - len(final)
+    if remaining > 0:
+        used = set(id(c) for c in final)
+        overflow = [c for c in multi if id(c) not in used]
+        final.extend(overflow[:remaining])
+
     html = ""
-    for i, c in enumerate(multi[:12], 1):
+    for i, c in enumerate(final[:TOTAL_STORY_SLOTS], 1):
         # Category badges
         badges = ""
         for cat in c["categories"]:
