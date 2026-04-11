@@ -106,8 +106,8 @@ NOISE_PATTERNS = [
 ]
 
 # ── Ranking & merge tuning ─────────────────────────────────────────────
-MERGE_TITLE_SIM = 0.35        # cosine sim between cluster titles to trigger merge
-MERGE_KW_JACCARD = 0.50       # Jaccard sim between cluster keyword sets
+MERGE_TITLE_SIM = 0.42        # cosine sim between cluster titles to trigger merge
+MERGE_KW_JACCARD = 0.45       # Jaccard sim between cluster keyword sets
 OVERVIEW_DOMESTIC_RATIO = 0.5  # min domestic fraction for overview selection
 OVERVIEW_COUNTRY_RATIO = 0.3   # min country fraction for overview selection
 RANK_DOMESTIC_BONUS = 2.0
@@ -200,6 +200,10 @@ _TITLE_PROMPT = (
     "A partir de los siguientes titulares que cubren el mismo evento, "
     "generá UN SOLO título síntesis, factual y conciso (máximo 100 caracteres). "
     "No uses comillas, no uses 'Quién es', no uses 'EN VIVO'. "
+    "Si el evento es una conmemoración, aniversario o investigación de un hecho "
+    "histórico, el título DEBE reflejarlo claramente (ej: 'A 50 años de…', "
+    "'Investigan…', 'Conmemoran…'). No presentes hechos históricos como si "
+    "fueran noticias actuales. "
     "Solo respondé con el título, nada más."
 )
 
@@ -209,8 +213,11 @@ _TITLE_FROM_SUMMARY_PROMPT = (
     "characters) that describes the CONCRETE event in the summary — not a "
     "generic label. Include the main actor(s) and the key fact. Do NOT use "
     "quotes, do NOT use 'EN VIVO', do NOT use vague phrasing like "
-    "'y todas sus medidas' or 'lo último'. Reply with ONLY the headline text, "
-    "nothing else."
+    "'y todas sus medidas' or 'lo último'. "
+    "If the event is a commemoration, anniversary, or investigation of a "
+    "historical fact, the headline MUST make this clear (e.g. 'A 50 años "
+    "de…', 'Investigan…'). Never present historical events as current news. "
+    "Reply with ONLY the headline text, nothing else."
 )
 
 _BANNED_PHRASES = (
@@ -257,15 +264,10 @@ _BRIEF_WITH_BODY_PROMPT = (
 )
 
 
-try:
-    from known_people import KNOWN_PEOPLE
-except ImportError:
-    KNOWN_PEOPLE = []
-
 # QeQ roster: ~1,500 Cono Sur public figures from curated Excel files under QeQ/.
-# These entries complement KNOWN_PEOPLE — they have Spanish bios and optional
-# aliases. KNOWN_PEOPLE always wins on name conflicts because its English bios
-# are hand-polished for the glossary cards.
+# This is the single source of truth for the people roster — the old
+# known_people.py module is superseded by the richer, more up-to-date
+# QeQ Excel workbooks.
 try:
     from qeq_loader import load_qeq_people
     _QEQ_PEOPLE = load_qeq_people()
@@ -281,15 +283,17 @@ _GENERIC_ROLES = {
 _PERSON_CONNECTORS = {"da", "de", "del", "do", "dos", "das", "y", "e", "van", "von"}
 _NON_PERSON_NAME_TOKENS = {
     "administracion", "agencia", "ande", "antimafia", "banco", "bloque",
-    "camara", "capital", "cartel", "club", "coalicion", "comando",
+    "camara", "capital", "cartel", "clan", "club", "coalicion", "comando",
     "comision", "comite", "comunidad", "congreso", "consejo",
     "coordinadora", "corte", "cruzada", "diario", "direccion", "ejercito",
-    "empresa", "estado", "fiscalia", "frente", "fundacion", "gobierno",
-    "grupo", "hora", "hub", "instituto", "ministerio", "movimiento",
-    "municipalidad", "nomadas", "organismo", "organizacion", "partido",
-    "periodico", "policia", "presidencia", "primer", "programa",
-    "republica", "secretaria", "senado", "sindicato", "sociedad",
-    "suprema", "tierra", "tribunal", "ultima", "unidad", "universidad",
+    "empresa", "estado", "familia", "fiscalia", "frente", "fundacion",
+    "gobierno", "grupo", "hermanos", "hora", "hub", "instituto", "las",
+    "leonas", "leones", "los", "ministerio", "movimiento", "municipalidad",
+    "nomadas", "organismo", "organizacion", "panteras", "partido",
+    "periodico", "policia", "presidencia", "primer", "programa", "pumas",
+    "republica", "secretaria", "seleccion", "senado", "sindicato",
+    "sociedad", "suprema", "teros", "tierra", "tribunal", "ultima",
+    "unidad", "universidad",
 }
 
 
@@ -358,57 +362,15 @@ def _count_name_mentions(name, titles):
 
 
 def _merged_known_people():
-    """Merge KNOWN_PEOPLE (priority) with the QeQ roster.
+    """Return the QeQ roster as the single source of truth.
 
-    KNOWN_PEOPLE entries win on normalized-name collisions so the hand-written
-    English bios on the glossary cards are preserved. We also transfer aliases
-    from QeQ onto the matching KNOWN_PEOPLE entry (matched by first-word +
-    last-word key) so nicknames like "El Peluca" still resolve to "Javier Milei".
+    Deduplicates by normalized name so there's at most one entry per person.
     """
-    def _fl_key(norm_name: str) -> str | None:
-        w = norm_name.split()
-        return f"{w[0]} {w[-1]}" if len(w) >= 2 else None
-
-    # Index QeQ by first+last so we can enrich KP entries.
-    qeq_by_fl: dict[str, dict] = {}
-    for entry in _QEQ_PEOPLE:
-        norm = _normalize_person_name(entry.get("name", ""))
-        fl = _fl_key(norm)
-        if fl:
-            qeq_by_fl.setdefault(fl, entry)
-
     seen = set()
-    seen_fl = set()
     merged = []
-    for entry in KNOWN_PEOPLE:
-        norm = _normalize_person_name(entry.get("name", ""))
-        if not norm or norm in seen:
-            continue
-        seen.add(norm)
-        fl = _fl_key(norm)
-        # Copy so we don't mutate the imported KNOWN_PEOPLE module state.
-        entry = dict(entry)
-        if fl and fl in qeq_by_fl:
-            qeq_match = qeq_by_fl[fl]
-            aliases = list(entry.get("aliases") or [])
-            seen_alias = {a.lower() for a in aliases}
-            for alias in qeq_match.get("aliases") or []:
-                if alias.lower() not in seen_alias:
-                    aliases.append(alias)
-                    seen_alias.add(alias.lower())
-            if aliases:
-                entry["aliases"] = aliases
-            seen_fl.add(fl)
-        merged.append(entry)
-
     for entry in _QEQ_PEOPLE:
         norm = _normalize_person_name(entry.get("name", ""))
         if not norm or norm in seen:
-            continue
-        fl = _fl_key(norm)
-        # Skip QeQ entries already represented by a KP entry under the same
-        # first+last key — avoids duplicate glossary cards for Milei, Peña, etc.
-        if fl and fl in seen_fl:
             continue
         seen.add(norm)
         merged.append(entry)
@@ -469,8 +431,7 @@ def _match_known_person(name):
 
 
 def _entry_source(entry):
-    # QeQ entries carry source='qeq'; hand-curated ones don't set it.
-    return entry.get("source") or "known_people"
+    return entry.get("source") or "qeq"
 
 
 # Prominence tiers used to pick the canonical entry per last name. Higher
@@ -532,16 +493,24 @@ def _build_lastname_prominence_map():
         entries.sort(
             key=lambda e: (
                 -_role_prominence(e),
-                0 if _entry_source(e) == "known_people" else 1,
+                -len(e.get("role", "")),
                 -len(e.get("role", "")),
             )
         )
         top = entries[0]
         second = entries[1]
-        # Only keep the canonical pick if it clearly outranks the runner-up
-        # (at least 20 prominence points ahead). Otherwise mark the last name
-        # as unresolved so nothing gets matched by surname alone.
-        if _role_prominence(top) - _role_prominence(second) >= 20:
+        # Keep the canonical pick if it clearly outranks the runner-up.
+        # Presidents/VPs (≥95) need only a 5-point gap; ministers/governors
+        # (≥80) need 10; others need 20.
+        top_prom = _role_prominence(top)
+        gap = top_prom - _role_prominence(second)
+        if top_prom >= 95:
+            min_gap = 5
+        elif top_prom >= 80:
+            min_gap = 10
+        else:
+            min_gap = 20
+        if gap >= min_gap:
             result[last_name] = (top, True)
     return result
 
@@ -551,9 +520,16 @@ _LASTNAME_CANONICAL = _build_lastname_prominence_map()
 # Short last names that would collide with ordinary Spanish words if matched.
 # These are excluded from the surname scan even when canonical.
 _AMBIGUOUS_SHORT_LASTNAMES = {
-    "pena", "cruz", "rosa", "mano", "caso", "plan", "hora", "mesa", "gato",
+    "cruz", "rosa", "mano", "caso", "plan", "hora", "mesa", "gato",
     "vaca", "gana", "para", "mejor", "solo", "cosa",
+    "guerra", "real", "paz", "campo", "rico", "blanco", "negro",
+    "fuerte", "franco", "pastor", "moral", "bueno", "leal",
 }
+# NOTE: "pena" removed — it blocked surname matching for Santiago Peña
+# (president of Paraguay). The prominence system + canonical map now
+# handle disambiguation (Peña has prominence 100, far above any runner-up).
+# "guerra" added — "guerra" (war) appears constantly in international
+# headlines and would false-match to singers/athletes named Guerra.
 
 
 # Some figures are best known by a distinctive FIRST name (e.g. Nicanor,
@@ -590,7 +566,7 @@ def _build_firstname_canonical_map():
         entries.sort(
             key=lambda e: (
                 -_role_prominence(e),
-                0 if _entry_source(e) == "known_people" else 1,
+                -len(e.get("role", "")),
             )
         )
         # Require a clear prominence gap to trust a first-name-only match
@@ -705,7 +681,10 @@ def _scan_titles_for_known_people(titles):
             if allow_first and first_name in toks:
                 count += 1
                 basis = basis or "first-name"
-        if count >= 2 and basis:
+        # High-prominence figures (presidents, ministers, governors: ≥80)
+        # are accepted with a single mention; others still require ≥2.
+        min_count = 1 if _role_prominence(entry) >= 80 else 2
+        if count >= min_count and basis:
             found[norm] = _annotate_entity(entry, count, basis, "person")
     ranked = sorted(
         found.values(),
@@ -1290,29 +1269,132 @@ def _story_rank_score(cluster):
     return base + domestic_bonus + concentration_bonus - intl_penalty
 
 
-def _cluster_country_assignment(cluster):
-    """Assign a cluster to one of: 'argentina', 'uruguay', 'paraguay', 'regional'.
+def _cluster_entity_country(cluster):
+    """Infer the thematic country from the known people/entities in the cluster.
 
-    Rule: a cluster is 'regional' only when at least 2 different countries
-    each contribute ≥2 sources (so a single AR story picked up by one PY
-    paper doesn't get pulled out of the AR tab). Otherwise the cluster is
-    assigned to the country with the most sources.
+    Scans cluster titles against the roster and counts how many matched
+    entities belong to each country. Returns (dominant_country, ratio, n_entities)
+    or (None, 0, 0) if no entities are found.
+
+    Only high-confidence entities (confidence >= 0.78, i.e. at least full-name
+    or multi-alias match) are considered to reduce false positives.
     """
+    titles = [a.title for a in cluster["articles"]]
+    people = _scan_titles_for_known_people(titles)
+    if not people:
+        return None, 0.0, 0
+    country_counts = Counter()
+    for p in people:
+        # Only trust high-confidence matches for country inference
+        if p.get("confidence", 0) < 0.78:
+            continue
+        c = p.get("country", "").lower()
+        if c in ("argentina", "uruguay", "paraguay"):
+            country_counts[c] += 1
+    total = sum(country_counts.values())
+    if not country_counts or total == 0:
+        return None, 0.0, 0
+    dominant, count = country_counts.most_common(1)[0]
+    return dominant, count / total, total
+
+
+_FOREIGN_COUNTRY_PATTERNS = re.compile(
+    r"\b(?:estados unidos|ee\.?\s*uu\.?|trump|biden|harris|kamala|washington|"
+    r"china|rusia|ucrania|iran|irak|siria|gaza|israel|palestina|libano|"
+    r"brasil|mexico|colombia|venezuela|peru|chile|bolivia|ecuador|"
+    r"españa|francia|alemania|italia|japon|corea|india|turquia|"
+    r"nicaragua|panama|costa rica|cuba|honduras|somalia|pakistan|"
+    r"wall street|nasa|artemis|kremlin|pentagon[oe]|otan|nato|"
+    r"netanyahu|putin|macron|zelensky|petro|lula|maduro|bukele)\b",
+    re.IGNORECASE,
+)
+
+# Cono Sur references that cancel out a foreign match (the story connects
+# to the region even if foreign countries are mentioned).
+_CONO_SUR_PATTERNS = re.compile(
+    r"\b(?:argentin|urugua|paragua|buenos aires|montevideo|asunci[oó]n|"
+    r"milei|bullrich|caputo|orsi|pe[ñn]a|mercosur|cono sur)\b",
+    re.IGNORECASE,
+)
+
+
+def _titles_mention_foreign_country(cluster) -> bool:
+    """Return True if cluster titles predominantly reference non-Cono-Sur places."""
+    foreign_hits = 0
+    local_hits = 0
+    for a in cluster["articles"]:
+        t = a.title
+        if _FOREIGN_COUNTRY_PATTERNS.search(t):
+            foreign_hits += 1
+        if _CONO_SUR_PATTERNS.search(t):
+            local_hits += 1
+    # If more titles mention foreign places than local ones, it's foreign
+    return foreign_hits > local_hits and foreign_hits >= 2
+
+
+def _cluster_country_assignment(cluster):
+    """Assign a cluster to one of: 'argentina', 'uruguay', 'paraguay',
+    'regional', or 'internacional'.
+
+    Rules (in order):
+    1. If ≥70% of articles are categorised 'internacional' AND no strong
+       Cono Sur entity signal → 'internacional'.
+    2. Entity override: if ≥2 high-confidence Cono Sur entities detected
+       AND ≥80% belong to one country, assign there (prevents an AR-media
+       story about Paraguayan politics from landing in the AR tab).
+    3. Multi-country domestic coverage (≥2 countries with ≥2 sources
+       each) → 'regional'.
+    4. Otherwise → dominant source country.
+    """
+    # ── Step 1: internacional check ──
+    dr = _domestic_ratio(cluster)
+    if dr < 0.30:
+        # Even if articles say 'internacional', the event may be *about*
+        # a Cono Sur actor (e.g. Milei at the UN). Entity check overrides
+        # only when we have strong evidence (≥2 entities).
+        entity_country, entity_ratio, n_ent = _cluster_entity_country(cluster)
+        if entity_country and n_ent >= 2 and entity_ratio >= 0.70:
+            return entity_country
+        return "internacional"
+
+    # ── Step 2: entity-based thematic country ──
+    entity_country, entity_ratio, n_ent = _cluster_entity_country(cluster)
+
+    # ── Step 3: source-based counts ──
     sources_by_country = defaultdict(set)
     for art in cluster["articles"]:
         sources_by_country[art.country].add(art.source)
-
     counts = {c: len(s) for c, s in sources_by_country.items()}
+
     if not counts:
         return "regional"
+
+    # Single source-country is straightforward
     if len(counts) == 1:
-        return next(iter(counts))
+        only_country = next(iter(counts))
+        # Entity override only when strong evidence (≥2 entities, ≥80%)
+        if (entity_country and n_ent >= 2
+                and entity_ratio >= 0.80 and entity_country != only_country):
+            return entity_country
+        return only_country
 
-    countries_with_meaningful = sum(1 for n in counts.values() if n >= 2)
-    if countries_with_meaningful >= 2:
-        return "regional"
+    # Multi-country sources
+    # Entity override: if ≥2 high-confidence actors and 80%+ from one
+    # country, that's the thematic country.
+    if entity_country and n_ent >= 2 and entity_ratio >= 0.80:
+        return entity_country
 
-    # Otherwise assign to dominant country
+    # Regional: ≥2 Cono Sur countries contribute sources AND the story
+    # is genuinely about the region (not just international news covered
+    # by multiple countries' media).
+    cono_sur_countries = sum(1 for c in counts if c in ("argentina", "uruguay", "paraguay"))
+    if cono_sur_countries >= 2 and dr >= 0.60:
+        # Extra guard: check titles for foreign country references that
+        # would make this an international story mis-categorized as domestic.
+        if not _titles_mention_foreign_country(cluster):
+            return "regional"
+
+    # Otherwise assign to dominant source country
     return max(counts.items(), key=lambda kv: kv[1])[0]
 
 
@@ -1473,6 +1555,10 @@ def _merge_similar_clusters(clusters):
         noise_count = sum(1 for a in all_articles if _is_noise(a.title))
         is_noise = noise_count > len(all_articles) * 0.5
 
+        # Regenerate title from the merged article pool instead of inheriting
+        # a stale title from the largest sub-cluster.
+        merged_title = _generate_story_title(all_articles)
+
         merged.append({
             "articles": all_articles,
             "sources": sources,
@@ -1481,7 +1567,7 @@ def _merge_similar_clusters(clusters):
             "subcategories": subcategories,
             "primary_subcategory": _cluster_primary_subcategory(all_articles),
             "lead": clusters[best_idx]["lead"],
-            "title": clusters[best_idx]["title"],
+            "title": merged_title,
             "summary": None,
             "size": len(all_articles),
             "multi": len(sources) >= 2,
@@ -1572,6 +1658,12 @@ def cluster_stories(df):
         })
 
     # ── Post-merge: combine clusters about the same event ──
+    clusters = _merge_similar_clusters(clusters)
+
+    # Second merge pass: now that merged clusters have regenerated titles,
+    # run again to catch near-duplicates that only became visible after
+    # title re-synthesis (e.g. two clusters whose original titles differed
+    # but whose regenerated titles are nearly identical).
     clusters = _merge_similar_clusters(clusters)
 
     clusters.sort(key=lambda c: (c["multi"], _story_rank_score(c)), reverse=True)
@@ -1894,15 +1986,18 @@ def generate_dashboard():
     clusters = cluster_stories(df)
     n_multi = len([c for c in clusters if c["multi"] and not c["noise"]])
 
-    # ── Assign each cluster to a country or 'regional' (preserves rank order) ──
+    # ── Assign each cluster to a country, 'regional', or 'internacional' ──
     country_clusters = {c: [] for c in COUNTRIES}
     regional_clusters = []
+    internacional_clusters = []
     for cl in clusters:
         if not cl["multi"] or cl["noise"]:
             continue
         target = _cluster_country_assignment(cl)
         if target == "regional":
             regional_clusters.append(cl)
+        elif target == "internacional":
+            internacional_clusters.append(cl)
         elif target in country_clusters:
             country_clusters[target].append(cl)
 
@@ -1910,12 +2005,14 @@ def generate_dashboard():
     for country in COUNTRIES:
         country_clusters[country] = country_clusters[country][:PER_TAB_DISPLAY_CAP]
     regional_clusters = regional_clusters[:PER_TAB_DISPLAY_CAP]
+    internacional_clusters = internacional_clusters[:PER_TAB_DISPLAY_CAP]
 
     # ── Generate Summary+Context briefs for top N of each tab ──
     brief_targets = []
     for country in COUNTRIES:
         brief_targets.extend(country_clusters[country][:PER_TAB_BRIEF_CAP])
     brief_targets.extend(regional_clusters[:PER_TAB_BRIEF_CAP])
+    brief_targets.extend(internacional_clusters[:PER_TAB_BRIEF_CAP])
     failed_briefs = []
     for cl in brief_targets:
         if cl.get("summary") is not None:
@@ -2016,6 +2113,24 @@ def generate_dashboard():
         <div class="sec-head">Regional Stories ({n_regional})</div>
         <p class="sec-desc">Events covered by newsrooms from multiple Cono Sur countries. Source lines are grouped by country so you can compare how each national press framed the same event.</p>
         <div class="stories-grid">{regional_stories_html}</div>
+    """
+
+    # ── Build internacional tab ──
+    intl_stories_html = build_stories_html(
+        internacional_clusters,
+        group_by_country=True,
+        empty_msg="No international stories in this cycle.",
+    )
+    n_internacional = len(internacional_clusters)
+    internacional_tab_html = f"""
+        <div class="top-story-line">
+            <span class="ts-label">International coverage · \U0001F30D</span>
+            <div class="ts-title">Global events covered by Cono Sur media but not primarily about the region.</div>
+        </div>
+
+        <div class="sec-head">International Stories ({n_internacional})</div>
+        <p class="sec-desc">Events from outside the Cono Sur that received multi-source coverage in the region's press.</p>
+        <div class="stories-grid">{intl_stories_html}</div>
     """
 
     total = len(df)
@@ -2593,6 +2708,7 @@ a:hover {{ text-decoration: underline; }}
         <button class="tab-btn" data-tab="tab-uy" role="tab">{COUNTRY_FLAGS['uruguay']} Uruguay <span class="tab-count">{len(country_clusters['uruguay'])}</span></button>
         <button class="tab-btn" data-tab="tab-py" role="tab">{COUNTRY_FLAGS['paraguay']} Paraguay <span class="tab-count">{len(country_clusters['paraguay'])}</span></button>
         <button class="tab-btn" data-tab="tab-regional" role="tab">Regional <span class="tab-count">{n_regional}</span></button>
+        <button class="tab-btn" data-tab="tab-intl" role="tab">\U0001F30D Internacional <span class="tab-count">{n_internacional}</span></button>
         <button class="tab-btn" data-tab="tab-glossary" role="tab">Actores Clave <span class="tab-count">{n_glossary}</span></button>
     </nav>
 
@@ -2610,6 +2726,10 @@ a:hover {{ text-decoration: underline; }}
 
     <section id="tab-regional" class="tab-panel" role="tabpanel">
         {regional_tab_html}
+    </section>
+
+    <section id="tab-intl" class="tab-panel" role="tabpanel">
+        {internacional_tab_html}
     </section>
 
     <section id="tab-glossary" class="tab-panel" role="tabpanel">

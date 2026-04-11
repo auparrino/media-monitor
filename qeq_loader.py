@@ -56,17 +56,19 @@ _NAME_CONNECTORS = {
 _NON_PERSON_TOKENS = {
     "administracion", "agencia", "alianza", "ande", "antimafia", "armadas",
     "asociacion", "autoridad", "banco", "bloque", "camara", "capital",
-    "cartel", "centro", "club", "coalicion", "comando", "comision",
+    "cartel", "centro", "clan", "club", "coalicion", "comando", "comision",
     "comite", "comunidad", "confederacion", "congreso", "consejo",
     "coordinadora", "corte", "cruzada", "defensa", "diario", "direccion",
-    "ejercito", "empresa", "estado", "federacion", "fiscalia", "frente",
-    "fundacion", "gobierno", "grupo", "hora", "hub", "iglesia",
-    "instituto", "junta", "lista", "medio", "mercosur", "ministerio",
-    "movimiento", "municipalidad", "nacion", "nomadas", "observatorio",
-    "organismo", "organizacion", "paraguay", "argentina", "uruguay",
-    "partido", "periodico", "policia", "presidencia", "primer", "programa",
-    "republica", "secretaria", "senado", "servicio", "sindicato", "sistema",
-    "sociedad", "suprema", "television", "tierra", "tribunal", "ultima",
+    "ejercito", "empresa", "estado", "familia", "familiares", "federacion", "fiscalia",
+    "frente", "fundacion", "gobierno", "grupo", "hermanos", "hora", "hub",
+    "abuelas", "hijos", "iglesia", "instituto", "junta", "las", "lista",
+    "los", "madre", "madres", "medio",
+    "mercosur", "ministerio", "movimiento", "municipalidad", "nacion",
+    "nomadas", "observatorio", "organismo", "organizacion", "panteras",
+    "paraguay", "argentina", "uruguay", "partido", "periodico", "policia",
+    "presidencia", "primer", "programa", "pumas", "republica", "secretaria",
+    "seleccion", "senado", "servicio", "sindicato", "sistema", "sociedad",
+    "suprema", "television", "teros", "tierra", "tribunal", "ultima",
     "unidad", "universidad",
 }
 
@@ -220,7 +222,10 @@ def _parse_workbook(path: Path) -> list[dict]:
         name = re.sub(r"\s*\([^)]*\)\s*$", "", name).strip()
         # Skip pseudo-entries that are actually event descriptors, not people
         # ("Milei y el Papa Francisco", "Javier Milei en Davos", etc.)
-        if re.search(r"\b(y el|y la|visita|gira|agenda|caso)\b", name, re.I):
+        if re.search(r"\b(y el|y la|visita|gira|agenda|caso|en el|en la|en los)\b", name, re.I):
+            continue
+        # Also skip "Name en Place" patterns like "Javier Milei en Davos"
+        if re.search(r"\ben\s+[A-Z]", name):
             continue
         # Drop single-word entries — too ambiguous to match reliably
         if len(name.split()) < 2:
@@ -276,6 +281,27 @@ def _collect_source_files() -> list[Path]:
     return files
 
 
+def _fl_key(name: str) -> str:
+    """First+last word key for fuzzy dedup (catches 'Javier Milei' vs 'Javier Gerardo Milei')."""
+    words = _strip_accents(name).split()
+    return f"{words[0]} {words[-1]}" if len(words) >= 2 else name.lower()
+
+
+def _merge_into(existing: dict, entry: dict):
+    """Merge a new entry's data into an existing one (aliases, bio, role)."""
+    merged = list(existing.get("aliases") or [])
+    seen_lower = {a.lower() for a in merged}
+    for alias in entry.get("aliases") or []:
+        if alias.lower() not in seen_lower:
+            merged.append(alias)
+            seen_lower.add(alias.lower())
+    existing["aliases"] = merged
+    if len(entry.get("bio", "")) > len(existing.get("bio", "")):
+        existing["bio"] = entry["bio"]
+    if len(entry.get("role", "")) > len(existing.get("role", "")):
+        existing["role"] = entry["role"]
+
+
 def build_cache() -> list[dict]:
     """Parse every Excel file under QeQ/ and write the JSON cache.
 
@@ -283,29 +309,32 @@ def build_cache() -> list[dict]:
     information: aliases get unioned, and the longest bio wins. This matters
     because the older ``Personalidades_ARG_*`` files lack an alias column,
     while the ``Batch001/002`` files carry nicknames the scraper relies on.
+
+    Deduplication uses both exact name and first+last word matching
+    (e.g. 'Javier Milei' and 'Javier Gerardo Milei' merge into one entry,
+    keeping the version with the richer aliases/bio).
     """
     entries: list[dict] = []
-    idx: dict[tuple, int] = {}
+    idx_exact: dict[tuple, int] = {}
+    idx_fl: dict[tuple, int] = {}
     for path in _collect_source_files():
         for entry in _parse_workbook(path):
-            key = (entry["name"].lower(), entry["country"])
-            if key in idx:
-                existing = entries[idx[key]]
-                # Union aliases
-                merged = list(existing.get("aliases") or [])
-                seen_lower = {a.lower() for a in merged}
-                for alias in entry.get("aliases") or []:
-                    if alias.lower() not in seen_lower:
-                        merged.append(alias)
-                        seen_lower.add(alias.lower())
-                existing["aliases"] = merged
-                # Prefer the longer bio / role
-                if len(entry.get("bio", "")) > len(existing.get("bio", "")):
-                    existing["bio"] = entry["bio"]
-                if len(entry.get("role", "")) > len(existing.get("role", "")):
-                    existing["role"] = entry["role"]
+            key_exact = (entry["name"].lower(), entry["country"])
+            fl = _fl_key(entry["name"])
+            key_fl = (fl, entry["country"])
+
+            # Try exact match first
+            if key_exact in idx_exact:
+                _merge_into(entries[idx_exact[key_exact]], entry)
                 continue
-            idx[key] = len(entries)
+
+            # Try first+last fuzzy match (same country)
+            if key_fl in idx_fl:
+                _merge_into(entries[idx_fl[key_fl]], entry)
+                continue
+
+            idx_exact[key_exact] = len(entries)
+            idx_fl[key_fl] = len(entries)
             entries.append(entry)
     CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
     CACHE_PATH.write_text(
