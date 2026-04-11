@@ -15,6 +15,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 
+from categorizer import analyze_article
+
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -32,6 +34,24 @@ CATEGORY_LABELS = {
     "politica": "POL",
     "economia": "ECON",
     "internacional": "INTL",
+}
+SUBCATEGORY_LABELS = {
+    "macroeconomia": "Macro",
+    "energia": "Energia",
+    "agro": "Agro",
+    "comercio": "Comercio",
+    "obra_publica": "Obra Publica",
+    "empleo": "Empleo",
+    "ejecutivo": "Ejecutivo",
+    "legislativo": "Legislativo",
+    "electoral": "Electoral",
+    "justicia": "Justicia",
+    "seguridad": "Seguridad",
+    "social": "Social",
+    "diplomacia": "Diplomacia",
+    "comercio_exterior": "Comercio Ext.",
+    "conflictos": "Conflictos",
+    "multilateral": "Multilateral",
 }
 
 _TWEMOJI = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72"
@@ -67,6 +87,20 @@ NOISE_PATTERNS = [
     r"en vivo:?\s*(pe[nñ]arol|nacional|racing|boca|river|independiente)",
     r"vs\.\s.*(en vivo|en directo)",
     r"(apertura|clausura).*en vivo",
+    # Lottery / quiniela / numbers games — routine roundups, not news
+    r"\bquiniela\b",
+    r"\bquini ?6\b",
+    r"\blotería\b|\bloteria\b",
+    r"\btelekino\b",
+    r"\bbrinco\b",
+    r"\btómbola\b|\btombola\b",
+    r"\bpowerball\b",
+    r"\bmega ?millions?\b",
+    r"\bla primera\b.*\bnúmero\b",
+    r"resultados? del sorteo",
+    r"sorteo de hoy",
+    r"números? ganadores?",
+    r"numeros? ganadores?",
 ]
 
 # ── Ranking & merge tuning ─────────────────────────────────────────────
@@ -80,7 +114,7 @@ RANK_INTL_PENALTY = 2.0
 MIN_DOMESTIC_SLOTS = 8         # of 12 Key Stories slots reserved for domestic (legacy)
 TOTAL_STORY_SLOTS = 12         # legacy global cap (no longer used)
 PER_TAB_DISPLAY_CAP = 10       # max Key Stories shown per tab (country / regional)
-PER_TAB_BRIEF_CAP = 5          # max stories per tab that get LLM Summary+Context
+PER_TAB_BRIEF_CAP = 10         # max stories per tab that get LLM Summary+Context
 
 STOPWORDS = {
     "de", "la", "el", "en", "que", "y", "a", "los", "las", "del", "un", "una",
@@ -102,6 +136,11 @@ def load_articles():
     conn = sqlite3.connect(DB_PATH)
     df = pd.read_sql_query("SELECT * FROM articles ORDER BY published_at DESC", conn)
     conn.close()
+    if df.empty:
+        return df
+    for col in ["subcategory", "category_confidence", "fetch_method", "section_url"]:
+        if col not in df.columns:
+            df[col] = None
     df["published_at"] = pd.to_datetime(df["published_at"], utc=True, errors="coerce")
     df["published_at"] = df["published_at"].dt.tz_localize(None)
     df["date"] = df["published_at"].dt.date
@@ -111,6 +150,24 @@ def load_articles():
     recent = df[df["scraped_at"] >= cutoff]
     if len(recent) > 0:
         df = recent
+    cleaned_rows = []
+    for row in df.to_dict("records"):
+        analysis = analyze_article(
+            row.get("title", ""),
+            row.get("url", ""),
+            source=row.get("source", ""),
+            fallback=row.get("category"),
+            strict=row.get("fetch_method") in {"html", "playwright"},
+        )
+        if not analysis["accepted"]:
+            continue
+        row["category"] = analysis["category"]
+        row["subcategory"] = analysis["subcategory"]
+        row["category_confidence"] = analysis["confidence"]
+        cleaned_rows.append(row)
+    df = pd.DataFrame(cleaned_rows)
+    if df.empty:
+        return df
     return df
 
 
@@ -142,6 +199,16 @@ _TITLE_PROMPT = (
     "generá UN SOLO título síntesis, factual y conciso (máximo 100 caracteres). "
     "No uses comillas, no uses 'Quién es', no uses 'EN VIVO'. "
     "Solo respondé con el título, nada más."
+)
+
+_TITLE_FROM_SUMMARY_PROMPT = (
+    "You are a diplomatic briefing editor. Below is a factual summary of a "
+    "news event. Write ONE short, specific headline in Spanish (max 100 "
+    "characters) that describes the CONCRETE event in the summary — not a "
+    "generic label. Include the main actor(s) and the key fact. Do NOT use "
+    "quotes, do NOT use 'EN VIVO', do NOT use vague phrasing like "
+    "'y todas sus medidas' or 'lo último'. Reply with ONLY the headline text, "
+    "nothing else."
 )
 
 _BANNED_PHRASES = (
@@ -193,11 +260,34 @@ try:
 except ImportError:
     KNOWN_PEOPLE = []
 
+# QeQ roster: ~1,500 Cono Sur public figures from curated Excel files under QeQ/.
+# These entries complement KNOWN_PEOPLE — they have Spanish bios and optional
+# aliases. KNOWN_PEOPLE always wins on name conflicts because its English bios
+# are hand-polished for the glossary cards.
+try:
+    from qeq_loader import load_qeq_people
+    _QEQ_PEOPLE = load_qeq_people()
+except Exception:
+    _QEQ_PEOPLE = []
+
 # Roles that signal the LLM was guessing — drop these entries entirely
 _GENERIC_ROLES = {
     "politician", "official", "leader", "figure", "person", "member",
     "public figure", "political figure", "government official",
     "party member", "national figure", "spokesperson", "spokesman",
+}
+_PERSON_CONNECTORS = {"da", "de", "del", "do", "dos", "das", "y", "e", "van", "von"}
+_NON_PERSON_NAME_TOKENS = {
+    "administracion", "agencia", "ande", "antimafia", "banco", "bloque",
+    "camara", "capital", "cartel", "club", "coalicion", "comando",
+    "comision", "comite", "comunidad", "congreso", "consejo",
+    "coordinadora", "corte", "cruzada", "diario", "direccion", "ejercito",
+    "empresa", "estado", "fiscalia", "frente", "fundacion", "gobierno",
+    "grupo", "hora", "hub", "instituto", "ministerio", "movimiento",
+    "municipalidad", "nomadas", "organismo", "organizacion", "partido",
+    "periodico", "policia", "presidencia", "primer", "programa",
+    "republica", "secretaria", "senado", "sindicato", "sociedad",
+    "suprema", "tierra", "tribunal", "ultima", "unidad", "universidad",
 }
 
 
@@ -213,31 +303,161 @@ def _normalize_person_name(name):
     return s.strip()
 
 
-def _build_known_people_index():
-    """Build lookup index: full normalized name → entry, plus first+last word combo."""
-    full_idx = {}
-    fl_idx = {}  # first_word + last_word → entry
+def _looks_like_person_name(name):
+    """Filter out institutions, parties, brands, and slogan-like phrases."""
+    if not name or re.search(r"\d", name) or "/" in str(name):
+        return False
+    raw_tokens = [tok for tok in re.split(r"\s+", str(name).strip()) if tok]
+    if len(raw_tokens) < 2 or len(raw_tokens) > 6:
+        return False
+
+    substantial = []
+    uppercase_like = 0
+    for token in raw_tokens:
+        norm = _normalize_person_name(token)
+        if norm in _PERSON_CONNECTORS:
+            continue
+        if not re.search(r"[A-Za-zÁÉÍÓÚÑáéíóúñ]", token):
+            return False
+        if norm in _NON_PERSON_NAME_TOKENS:
+            return False
+        if len(token) > 1 and token.isupper():
+            return False
+        substantial.append(token)
+        if token[0].isupper():
+            uppercase_like += 1
+
+    if len(substantial) < 2:
+        return False
+    if uppercase_like < 2:
+        return False
+    return True
+
+
+def _count_name_mentions(name, titles):
+    """Count conservative title mentions for a person-like name."""
+    norm_name = _normalize_person_name(name)
+    if not norm_name:
+        return 0
+    parts = norm_name.split()
+    if len(parts) < 2:
+        return 0
+    last_name = parts[-1]
+    count = 0
+    for title in titles:
+        norm_title = _normalize_person_name(title)
+        tokens = set(norm_title.split())
+        if norm_name in norm_title:
+            count += 1
+            continue
+        if len(last_name) >= 5 and last_name not in _AMBIGUOUS_SHORT_LASTNAMES and last_name in tokens:
+            count += 1
+    return count
+
+
+def _merged_known_people():
+    """Merge KNOWN_PEOPLE (priority) with the QeQ roster.
+
+    KNOWN_PEOPLE entries win on normalized-name collisions so the hand-written
+    English bios on the glossary cards are preserved. We also transfer aliases
+    from QeQ onto the matching KNOWN_PEOPLE entry (matched by first-word +
+    last-word key) so nicknames like "El Peluca" still resolve to "Javier Milei".
+    """
+    def _fl_key(norm_name: str) -> str | None:
+        w = norm_name.split()
+        return f"{w[0]} {w[-1]}" if len(w) >= 2 else None
+
+    # Index QeQ by first+last so we can enrich KP entries.
+    qeq_by_fl: dict[str, dict] = {}
+    for entry in _QEQ_PEOPLE:
+        norm = _normalize_person_name(entry.get("name", ""))
+        fl = _fl_key(norm)
+        if fl:
+            qeq_by_fl.setdefault(fl, entry)
+
+    seen = set()
+    seen_fl = set()
+    merged = []
     for entry in KNOWN_PEOPLE:
-        norm = _normalize_person_name(entry["name"])
+        norm = _normalize_person_name(entry.get("name", ""))
+        if not norm or norm in seen:
+            continue
+        seen.add(norm)
+        fl = _fl_key(norm)
+        # Copy so we don't mutate the imported KNOWN_PEOPLE module state.
+        entry = dict(entry)
+        if fl and fl in qeq_by_fl:
+            qeq_match = qeq_by_fl[fl]
+            aliases = list(entry.get("aliases") or [])
+            seen_alias = {a.lower() for a in aliases}
+            for alias in qeq_match.get("aliases") or []:
+                if alias.lower() not in seen_alias:
+                    aliases.append(alias)
+                    seen_alias.add(alias.lower())
+            if aliases:
+                entry["aliases"] = aliases
+            seen_fl.add(fl)
+        merged.append(entry)
+
+    for entry in _QEQ_PEOPLE:
+        norm = _normalize_person_name(entry.get("name", ""))
+        if not norm or norm in seen:
+            continue
+        fl = _fl_key(norm)
+        # Skip QeQ entries already represented by a KP entry under the same
+        # first+last key — avoids duplicate glossary cards for Milei, Peña, etc.
+        if fl and fl in seen_fl:
+            continue
+        seen.add(norm)
+        merged.append(entry)
+    return merged
+
+
+_ALL_KNOWN_PEOPLE = _merged_known_people()
+
+
+def _build_known_people_index():
+    """Build lookup indices for identifying people in news titles.
+
+    Returns three dicts:
+      * full_idx     — normalized full name → entry
+      * fl_idx       — "firstword lastword" → entry (fallback for long names)
+      * alias_idx    — normalized alias → entry (QeQ nicknames)
+    """
+    full_idx = {}
+    fl_idx = {}
+    alias_idx = {}
+    for entry in _ALL_KNOWN_PEOPLE:
+        norm = _normalize_person_name(entry.get("name", ""))
         if not norm:
             continue
-        full_idx[norm] = entry
+        full_idx.setdefault(norm, entry)
         words = norm.split()
         if len(words) >= 2:
-            fl_idx[f"{words[0]} {words[-1]}"] = entry
-    return full_idx, fl_idx
+            fl_idx.setdefault(f"{words[0]} {words[-1]}", entry)
+        for alias in entry.get("aliases", []) or []:
+            nalias = _normalize_person_name(alias)
+            # Require ≥2 tokens or ≥6 chars to avoid matching common words
+            if not nalias:
+                continue
+            if len(nalias.split()) < 2 and len(nalias) < 5:
+                continue
+            alias_idx.setdefault(nalias, entry)
+    return full_idx, fl_idx, alias_idx
 
 
-_KNOWN_FULL_IDX, _KNOWN_FL_IDX = _build_known_people_index()
+_KNOWN_FULL_IDX, _KNOWN_FL_IDX, _KNOWN_ALIAS_IDX = _build_known_people_index()
 
 
 def _match_known_person(name):
-    """Return canonical KNOWN_PEOPLE entry for a name, or None."""
+    """Return canonical known-person entry for a name, or None."""
     norm = _normalize_person_name(name)
     if not norm:
         return None
     if norm in _KNOWN_FULL_IDX:
         return _KNOWN_FULL_IDX[norm]
+    if norm in _KNOWN_ALIAS_IDX:
+        return _KNOWN_ALIAS_IDX[norm]
     words = norm.split()
     if len(words) >= 2:
         fl_key = f"{words[0]} {words[-1]}"
@@ -246,27 +466,294 @@ def _match_known_person(name):
     return None
 
 
+def _entry_source(entry):
+    # QeQ entries carry source='qeq'; hand-curated ones don't set it.
+    return entry.get("source") or "known_people"
+
+
+# Prominence tiers used to pick the canonical entry per last name. Higher
+# score = more likely to be the person a naked "Riera" / "Paredes" / "López"
+# in a Cono Sur headline is referring to.
+_ROLE_PROMINENCE = [
+    (re.compile(r"\bpresident", re.I), 100),
+    (re.compile(r"vice ?president", re.I), 95),
+    (re.compile(r"jefe de gabinete|chief of the cabinet|chief of staff", re.I), 92),
+    (re.compile(r"\bministr[oa]\b|\bminister\b|\bsecretari[oa] general\b", re.I), 90),
+    (re.compile(r"gobernador|governor|intendent[ae]", re.I), 80),
+    (re.compile(r"\bsenador[a]?\b|\bsenator\b", re.I), 70),
+    (re.compile(r"diputad[oa]|deputy|legislador", re.I), 60),
+    (re.compile(r"juez|fiscal|supreme court|corte suprema|justice", re.I), 58),
+    (re.compile(r"embajador|ambassador", re.I), 55),
+    (re.compile(r"l[ií]der|leader|party", re.I), 50),
+    (re.compile(r"ceo|founder|president.*company|empresari[oa]|directiv[oa]", re.I), 45),
+    (re.compile(r"ex ?president", re.I), 40),
+    (re.compile(r"futbolist|deportist|tenist|basquetbol|player", re.I), 20),
+    (re.compile(r"narco|crimen|criminal|trafican", re.I), 5),
+]
+
+
+def _role_prominence(entry) -> int:
+    role = (entry.get("role") or "").lower()
+    for pat, score in _ROLE_PROMINENCE:
+        if pat.search(role):
+            return score
+    return 30  # default mid-tier
+
+
+def _build_lastname_prominence_map():
+    """Pick the single canonical entry for each last name in the roster.
+
+    When two people share a last name (e.g. Enrique Riera, Minister of the
+    Interior; Fausto Riera, narco), we want naked-surname matches in
+    headlines to land on the more prominent figure. This builds::
+
+        {last_name: (canonical_entry, is_ambiguous)}
+
+    where ``is_ambiguous`` is True when more than one entry shares that last
+    name. Even ambiguous last names get a canonical pick — the matcher then
+    decides whether to trust it based on how dominant the canonical entry is.
+    """
+    buckets: dict[str, list[dict]] = {}
+    for entry in _ALL_KNOWN_PEOPLE:
+        norm = _normalize_person_name(entry.get("name", ""))
+        words = norm.split()
+        if len(words) < 2:
+            continue
+        buckets.setdefault(words[-1], []).append(entry)
+
+    result: dict[str, tuple[dict, bool]] = {}
+    for last_name, entries in buckets.items():
+        if len(entries) == 1:
+            result[last_name] = (entries[0], False)
+            continue
+        # Sort by prominence desc, then by source (KP first), then by role length
+        entries.sort(
+            key=lambda e: (
+                -_role_prominence(e),
+                0 if _entry_source(e) == "known_people" else 1,
+                -len(e.get("role", "")),
+            )
+        )
+        top = entries[0]
+        second = entries[1]
+        # Only keep the canonical pick if it clearly outranks the runner-up
+        # (at least 20 prominence points ahead). Otherwise mark the last name
+        # as unresolved so nothing gets matched by surname alone.
+        if _role_prominence(top) - _role_prominence(second) >= 20:
+            result[last_name] = (top, True)
+    return result
+
+
+_LASTNAME_CANONICAL = _build_lastname_prominence_map()
+
+# Short last names that would collide with ordinary Spanish words if matched.
+# These are excluded from the surname scan even when canonical.
+_AMBIGUOUS_SHORT_LASTNAMES = {
+    "pena", "cruz", "rosa", "mano", "caso", "plan", "hora", "mesa", "gato",
+    "vaca", "gana", "para", "mejor", "solo", "cosa",
+}
+
+
+# Some figures are best known by a distinctive FIRST name (e.g. Nicanor,
+# Yamandú, Lilita) more than by their last name. We allow first-name matching
+# when the first name is (a) reasonably long and (b) unique to a single
+# prominent entry in the roster.
+_COMMON_FIRST_NAMES = {
+    "juan", "jose", "maria", "luis", "carlos", "jorge", "pedro", "pablo",
+    "ana", "laura", "silvia", "marcelo", "fernando", "roberto", "ricardo",
+    "diego", "daniel", "javier", "martin", "eduardo", "alberto", "andres",
+    "miguel", "rafael", "gabriel", "victor", "oscar", "hugo", "raul",
+    "gustavo", "alejandro", "rodrigo", "cristian", "sergio", "manuel",
+    "hector", "antonio", "francisco",
+}
+
+
+def _build_firstname_canonical_map():
+    buckets: dict[str, list[dict]] = {}
+    for entry in _ALL_KNOWN_PEOPLE:
+        norm = _normalize_person_name(entry.get("name", ""))
+        words = norm.split()
+        if len(words) < 2:
+            continue
+        first = words[0]
+        if len(first) < 6 or first in _COMMON_FIRST_NAMES:
+            continue
+        buckets.setdefault(first, []).append(entry)
+
+    result: dict[str, dict] = {}
+    for first, entries in buckets.items():
+        if len(entries) == 1:
+            result[first] = entries[0]
+            continue
+        entries.sort(
+            key=lambda e: (
+                -_role_prominence(e),
+                0 if _entry_source(e) == "known_people" else 1,
+            )
+        )
+        # Require a clear prominence gap to trust a first-name-only match
+        if _role_prominence(entries[0]) - _role_prominence(entries[1]) >= 30:
+            result[first] = entries[0]
+    return result
+
+
+_FIRSTNAME_CANONICAL = _build_firstname_canonical_map()
+
+
+_KNOWN_ORGANIZATIONS = [
+    {"name": "La Libertad Avanza", "country": "argentina", "role": "Political party", "bio": "Ruling libertarian party led by Javier Milei.", "aliases": ["LLA"]},
+    {"name": "PRO", "country": "argentina", "role": "Political party", "bio": "Center-right Argentine party founded by Mauricio Macri.", "aliases": ["Propuesta Republicana"]},
+    {"name": "Union por la Patria", "country": "argentina", "role": "Peronist coalition", "bio": "Main Peronist electoral coalition in national politics.", "aliases": ["UxP"]},
+    {"name": "UCR", "country": "argentina", "role": "Political party", "bio": "Historic Radical Civic Union party in Argentina.", "aliases": ["Union Civica Radical"]},
+    {"name": "FMI", "country": "international", "role": "International financial institution", "bio": "International Monetary Fund, central to regional fiscal negotiations.", "aliases": ["Fondo Monetario Internacional"]},
+    {"name": "BCRA", "country": "argentina", "role": "Central bank", "bio": "Central Bank of the Argentine Republic.", "aliases": ["Banco Central"]},
+    {"name": "Frente Amplio", "country": "uruguay", "role": "Political coalition", "bio": "Uruguayan left-wing coalition currently in government.", "aliases": []},
+    {"name": "Partido Nacional", "country": "uruguay", "role": "Political party", "bio": "Traditional Uruguayan center-right party.", "aliases": ["Blanco", "Blancos"]},
+    {"name": "Partido Colorado", "country": "paraguay", "role": "Political party", "bio": "Colorado Party, Paraguay's dominant political force.", "aliases": ["ANR", "Asociacion Nacional Republicana"]},
+    {"name": "PLRA", "country": "paraguay", "role": "Political party", "bio": "Partido Liberal Radical Autentico, main opposition party in Paraguay.", "aliases": ["Partido Liberal Radical Autentico"]},
+    {"name": "IPS", "country": "paraguay", "role": "Social security institution", "bio": "Instituto de Prevision Social, Paraguay's main social security and health system.", "aliases": []},
+    {"name": "ANDE", "country": "paraguay", "role": "State electricity company", "bio": "National Electricity Administration of Paraguay.", "aliases": []},
+    {"name": "MOPC", "country": "paraguay", "role": "Public works ministry", "bio": "Ministry of Public Works and Communications of Paraguay.", "aliases": []},
+    {"name": "MEF", "country": "paraguay", "role": "Economy ministry", "bio": "Ministry of Economy and Finance of Paraguay.", "aliases": []},
+    {"name": "Petropar", "country": "paraguay", "role": "State fuel company", "bio": "Paraguay's state oil and fuel company.", "aliases": []},
+    {"name": "Mercosur", "country": "regional", "role": "Regional bloc", "bio": "South American trade bloc linking Argentina, Brazil, Paraguay and Uruguay.", "aliases": []},
+    {"name": "PIT-CNT", "country": "uruguay", "role": "Trade union federation", "bio": "Uruguay's main labor federation.", "aliases": []},
+]
+
+
+def _entity_confidence(mentions, basis):
+    base = {
+        "full-name": 0.95,
+        "full-name-llm": 0.7,
+        "multi-alias": 0.9,
+        "single-alias": 0.82,
+        "last-name": 0.78,
+        "first-name": 0.74,
+        "org-name": 0.9,
+        "org-alias": 0.82,
+    }.get(basis, 0.65)
+    return round(min(0.99, base + min(mentions - 2, 4) * 0.03), 2)
+
+
+def _annotate_entity(entry, mentions, basis, entity_type):
+    out = dict(entry)
+    out["mentions"] = mentions
+    out["confidence"] = _entity_confidence(mentions, basis)
+    out["match_basis"] = basis
+    out["entity_type"] = entity_type
+    return out
+
+
 def _scan_titles_for_known_people(titles):
-    """Return list of KNOWN_PEOPLE entries whose names appear in any title (≥2 occurrences)."""
-    if not titles or not KNOWN_PEOPLE:
+    """Return high-confidence people detected across the title corpus."""
+    if not titles or not _ALL_KNOWN_PEOPLE:
         return []
     norm_titles = [_normalize_person_name(t) for t in titles]
+    title_tokens = [set(nt.split()) for nt in norm_titles]
     found = {}
-    for entry in KNOWN_PEOPLE:
-        norm = _normalize_person_name(entry["name"])
+    for entry in _ALL_KNOWN_PEOPLE:
+        norm = _normalize_person_name(entry.get("name", ""))
         if not norm:
             continue
         words = norm.split()
-        # Match by full name OR by last name (most distinctive)
         last_name = words[-1] if words else ""
+        canonical = _LASTNAME_CANONICAL.get(last_name)
+        allow_last = (
+            len(last_name) >= 4
+            and last_name not in _AMBIGUOUS_SHORT_LASTNAMES
+            and canonical is not None
+            and canonical[0] is entry
+        )
+        first_name = words[0] if words else ""
+        allow_first = (
+            len(first_name) >= 6
+            and _FIRSTNAME_CANONICAL.get(first_name) is entry
+        )
+        multi_word_aliases = []
+        single_word_aliases = []
+        for alias in entry.get("aliases", []) or []:
+            nalias = _normalize_person_name(alias)
+            if not nalias:
+                continue
+            if len(nalias.split()) >= 2:
+                multi_word_aliases.append(nalias)
+            elif len(nalias) >= 5:
+                single_word_aliases.append(nalias)
         count = 0
-        for nt in norm_titles:
-            if norm in nt or (len(last_name) >= 5 and last_name in nt):
+        basis = None
+        for nt, toks in zip(norm_titles, title_tokens):
+            if not nt:
+                continue
+            if norm in nt:
+                count += 1
+                basis = basis or "full-name"
+                continue
+            if any(na in nt for na in multi_word_aliases):
+                count += 1
+                basis = basis or "multi-alias"
+                continue
+            if any(sa in toks for sa in single_word_aliases):
+                count += 1
+                basis = basis or "single-alias"
+                continue
+            if allow_last and last_name in toks:
+                count += 1
+                basis = basis or "last-name"
+                continue
+            if allow_first and first_name in toks:
+                count += 1
+                basis = basis or "first-name"
+        if count >= 2 and basis:
+            found[norm] = _annotate_entity(entry, count, basis, "person")
+    ranked = sorted(
+        found.values(),
+        key=lambda e: (-e["mentions"], -e["confidence"], e["name"]),
+    )
+    return ranked[:30]
+
+
+def _scan_titles_for_known_organizations(titles):
+    """Return frequently mentioned organizations, parties, and institutions."""
+    if not titles:
+        return []
+    norm_titles = [_normalize_person_name(t) for t in titles]
+    title_tokens = [set(nt.split()) for nt in norm_titles]
+    found = {}
+    for entry in _KNOWN_ORGANIZATIONS:
+        norm = _normalize_person_name(entry["name"])
+        aliases = [_normalize_person_name(a) for a in entry.get("aliases", []) if a]
+        count = 0
+        basis = None
+        for nt, toks in zip(norm_titles, title_tokens):
+            full_match = False
+            if norm:
+                if len(norm.split()) == 1 and len(norm) <= 4:
+                    full_match = norm in toks
+                else:
+                    full_match = norm in nt
+            if full_match:
+                count += 1
+                basis = basis or "org-name"
+                continue
+            matched_alias = False
+            for alias in aliases:
+                if len(alias.split()) >= 2 and alias in nt:
+                    matched_alias = True
+                    basis = basis or "org-alias"
+                    break
+                if len(alias.split()) == 1 and alias in toks:
+                    matched_alias = True
+                    basis = basis or "org-alias"
+                    break
+            if matched_alias:
                 count += 1
         if count >= 2:
-            found[norm] = (entry, count)
-    # Sort by frequency desc
-    return [e for e, _ in sorted(found.values(), key=lambda x: -x[1])]
+            found[norm] = _annotate_entity(entry, count, basis or "org-name", "organization")
+    ranked = sorted(
+        found.values(),
+        key=lambda e: (-e["mentions"], -e["confidence"], e["name"]),
+    )
+    return ranked[:12]
 
 
 _GLOSSARY_PROMPT = (
@@ -382,6 +869,8 @@ def _llm_extract_glossary(titles):
         bio = (e.get("bio") or "").strip()
         if not name or not role or country not in valid_countries:
             continue
+        if not _looks_like_person_name(name):
+            continue
 
         # Override with canonical KNOWN_PEOPLE entry if matched
         match = _match_known_person(name)
@@ -390,11 +879,14 @@ def _llm_extract_glossary(titles):
             if norm in seen_names:
                 continue  # already seeded
             seen_names.add(norm)
-            cleaned_llm.append(dict(match))  # copy
+            mentions = _count_name_mentions(match["name"], titles)
+            cleaned_llm.append(_annotate_entity(match, mentions, "full-name-llm", "person"))
             continue
 
         # Drop generic-role entries (signal of LLM guessing)
         if role.lower().strip() in _GENERIC_ROLES:
+            continue
+        if _count_name_mentions(name, titles) < 2:
             continue
 
         norm = _normalize_person_name(name)
@@ -404,11 +896,16 @@ def _llm_extract_glossary(titles):
 
         if len(bio) > 200:
             bio = bio[:197] + "..."
+        mentions = _count_name_mentions(name, titles)
         cleaned_llm.append({
             "name": name,
             "role": role,
             "country": country,
             "bio": bio,
+            "mentions": mentions,
+            "confidence": _entity_confidence(mentions, "full-name-llm"),
+            "match_basis": "full-name-llm",
+            "entity_type": "person",
         })
 
     # ── Step 5: merge — seeded first (highest confidence), then LLM extras ──
@@ -480,6 +977,63 @@ def _llm_synthesize_title(headlines):
                 f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
                 json={
                     "contents": [{"parts": [{"text": f"{_TITLE_PROMPT}\n\n{user_msg}"}]}],
+                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 80},
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+            text = text.strip('"\'""«»\n .')
+            if 5 < len(text) < 130:
+                return text
+        except Exception:
+            pass
+
+    return None
+
+
+def _llm_synthesize_title_from_summary(summary_en):
+    """Generate a specific Spanish headline derived from the English summary.
+
+    Because the summary is grounded in article bodies, this guarantees the
+    title describes the same concrete event as the summary below it —
+    eliminating the 'Javier Milei y todas sus medidas' style of generic
+    headline mismatched with a specific LIBRA-case summary.
+    """
+    if not summary_en or len(summary_en) < 30:
+        return None
+    user_msg = f"Summary:\n{summary_en}"
+
+    if GROQ_API_KEY:
+        try:
+            resp = http_requests.post(
+                "https://api.groq.com/openai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                json={
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [
+                        {"role": "system", "content": _TITLE_FROM_SUMMARY_PROMPT},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "temperature": 0.2,
+                    "max_tokens": 80,
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+            text = resp.json()["choices"][0]["message"]["content"].strip()
+            text = text.strip('"\'""«»\n .')
+            if 5 < len(text) < 130:
+                return text
+        except Exception:
+            pass
+
+    if GEMINI_API_KEY:
+        try:
+            resp = http_requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"parts": [{"text": f"{_TITLE_FROM_SUMMARY_PROMPT}\n\n{user_msg}"}]}],
                     "generationConfig": {"temperature": 0.2, "maxOutputTokens": 80},
                 },
                 timeout=10,
@@ -974,6 +1528,13 @@ def _merge_similar_clusters(clusters):
         sources = sorted(set(a.source for a in all_articles))
         countries = sorted(set(a.country for a in all_articles))
         categories = sorted(set(a.category for a in all_articles))
+        subcategories = sorted(
+            {
+                str(getattr(a, "subcategory")).strip()
+                for a in all_articles
+                if pd.notna(getattr(a, "subcategory", None)) and str(getattr(a, "subcategory")).strip()
+            }
+        )
 
         noise_count = sum(1 for a in all_articles if _is_noise(a.title))
         is_noise = noise_count > len(all_articles) * 0.5
@@ -983,6 +1544,8 @@ def _merge_similar_clusters(clusters):
             "sources": sources,
             "countries": countries,
             "categories": categories,
+            "subcategories": subcategories,
+            "primary_subcategory": _cluster_primary_subcategory(all_articles),
             "lead": clusters[best_idx]["lead"],
             "title": clusters[best_idx]["title"],
             "summary": None,
@@ -1012,7 +1575,9 @@ def cluster_stories(df):
     RECLUSTER_MIN = 10   # only split really large clusters
     MIN_KW = 2
 
-    rows = list(df.itertuples())
+    # Drop noise articles BEFORE clustering so lottery/quiniela/horóscopo
+    # headlines can't become a "3 sources" story card.
+    rows = [r for r in df.itertuples() if not _is_noise(r.title)]
     if not rows:
         return []
 
@@ -1045,7 +1610,13 @@ def cluster_stories(df):
         sources = sorted(set(r.source for r in cluster_rows))
         countries = sorted(set(r.country for r in cluster_rows))
         categories = sorted(set(r.category for r in cluster_rows))
-
+        subcategories = sorted(
+            {
+                str(getattr(r, "subcategory")).strip()
+                for r in cluster_rows
+                if pd.notna(getattr(r, "subcategory", None)) and str(getattr(r, "subcategory")).strip()
+            }
+        )
         noise_count = sum(1 for r in cluster_rows if _is_noise(r.title))
         is_noise = noise_count > len(cluster_rows) * 0.5
 
@@ -1054,6 +1625,8 @@ def cluster_stories(df):
             "sources": sources,
             "countries": countries,
             "categories": categories,
+            "subcategories": subcategories,
+            "primary_subcategory": _cluster_primary_subcategory(cluster_rows),
             "lead": cluster_rows[0].title,
             "title": _generate_story_title(cluster_rows),
             "summary": None,
@@ -1080,6 +1653,17 @@ def _build_coverage_dots(n_sources):
     return f'<span class="coverage-dots">{dots}</span>'
 
 
+def _cluster_primary_subcategory(articles):
+    subcats = []
+    for article in articles:
+        value = getattr(article, "subcategory", None)
+        if isinstance(value, str) and value.strip():
+            subcats.append(value)
+    if not subcats:
+        return None
+    return Counter(subcats).most_common(1)[0][0]
+
+
 def _render_story_card(c, idx, group_by_country=False):
     """Render a single story card. If group_by_country, source lines are
     grouped under per-country sub-headers (used in the Regional tab to make
@@ -1090,6 +1674,12 @@ def _render_story_card(c, idx, group_by_country=False):
         label = CATEGORY_LABELS.get(cat, cat)
         text_color = "#003049" if color == "#d4a800" else "white"
         badges += f'<span class="badge" style="background:{color};color:{text_color}">{label}</span> '
+    if c.get("primary_subcategory"):
+        sub_label = SUBCATEGORY_LABELS.get(
+            c["primary_subcategory"],
+            c["primary_subcategory"].replace("_", " ").title(),
+        )
+        badges += f'<span class="sub-badge">{sub_label}</span> '
 
     flags = " ".join(COUNTRY_FLAGS.get(co, "") for co in c["countries"])
     coverage = _build_coverage_dots(len(c["sources"]))
@@ -1167,10 +1757,17 @@ def build_stories_html(clusters_to_render, group_by_country=False, empty_msg=Non
     )
 
 
-def build_glossary_html(entries):
-    """Render the 'Quién es Quién' glossary cards, grouped by country."""
+def _confidence_label(score):
+    if score >= 0.9:
+        return "Alta"
+    if score >= 0.78:
+        return "Media"
+    return "Baja"
+
+
+def _render_entity_groups(entries, empty_msg):
     if not entries:
-        return '<p class="muted">No prominent figures identified in this cycle.</p>'
+        return f'<p class="muted">{empty_msg}</p>'
 
     country_order = ["argentina", "uruguay", "paraguay", "regional", "international"]
     country_display = {
@@ -1180,10 +1777,11 @@ def build_glossary_html(entries):
         "regional": ("Regional", ""),
         "international": ("International", ""),
     }
-
     grouped = defaultdict(list)
-    for e in entries:
-        grouped[e["country"]].append(e)
+    for entry in entries:
+        grouped[entry["country"]].append(entry)
+    for country in grouped:
+        grouped[country].sort(key=lambda e: (-e.get("mentions", 0), -e.get("confidence", 0), e["name"]))
 
     html = ""
     for country in country_order:
@@ -1191,14 +1789,23 @@ def build_glossary_html(entries):
             continue
         name, flag = country_display[country]
         cards = ""
-        for e in grouped[country]:
-            bio_html = (
-                f'<div class="gloss-bio">{e["bio"]}</div>' if e.get("bio") else ""
-            )
+        for entry in grouped[country]:
+            bio_html = f'<div class="gloss-bio">{entry["bio"]}</div>' if entry.get("bio") else ""
+            mention_text = f'{entry.get("mentions", 0)} menciones'
+            confidence_text = _confidence_label(entry.get("confidence", 0.0))
+            match_basis = (entry.get("match_basis") or "").replace("-", " ").title()
+            meta = f"""
+                <div class="gloss-meta">
+                    <span class="meta-pill">{mention_text}</span>
+                    <span class="meta-pill">Confianza {confidence_text}</span>
+                    <span class="meta-pill">{match_basis}</span>
+                </div>
+            """
             cards += f"""
             <div class="gloss-card">
-                <div class="gloss-name">{e['name']}</div>
-                <div class="gloss-role">{e['role']}</div>
+                <div class="gloss-name">{entry['name']}</div>
+                <div class="gloss-role">{entry['role']}</div>
+                {meta}
                 {bio_html}
             </div>"""
         html += f"""
@@ -1207,6 +1814,27 @@ def build_glossary_html(entries):
             <div class="gloss-grid">{cards}</div>
         </div>"""
     return html
+
+
+def build_glossary_html(people_entries, org_entries):
+    """Render separate panels for people and organizations."""
+    people_html = _render_entity_groups(
+        people_entries,
+        "No prominent people identified in this cycle.",
+    )
+    org_html = _render_entity_groups(
+        org_entries,
+        "No institutions or parties stood out across this cycle.",
+    )
+    return f"""
+    <div class="sec-head">Who&apos;s Who</div>
+    <p class="sec-desc">People appearing repeatedly across the region&apos;s press. Cards show mention count, confidence, and the matching basis used to identify them.</p>
+    {people_html}
+
+    <div class="sec-head">Institutions To Watch</div>
+    <p class="sec-desc">Parties, ministries, state companies, blocs, and labor federations that appeared repeatedly in this cycle.</p>
+    {org_html}
+    """
 
 
 def _build_stats_bar(df):
@@ -1360,6 +1988,13 @@ def generate_dashboard():
         summary, context = _generate_story_brief(cl["articles"])
         cl["summary"] = summary
         cl["context"] = context
+        # Re-derive the card title from the summary so the headline above
+        # the card can never contradict the summary body (e.g. a generic
+        # "Milei y todas sus medidas" over a specific LIBRA-case summary).
+        if summary:
+            refined = _llm_synthesize_title_from_summary(summary)
+            if refined:
+                cl["title"] = refined
         time.sleep(1.5)  # rate-limit friendly
 
     # ── Build country tabs ──
@@ -1405,9 +2040,10 @@ def generate_dashboard():
                 glossary_titles.append(t)
         if len(glossary_titles) >= 120:  # cap prompt size
             break
-    glossary_entries = _llm_extract_glossary(glossary_titles[:120])
-    glossary_html = build_glossary_html(glossary_entries)
-    n_glossary = len(glossary_entries)
+    people_entries = _llm_extract_glossary(glossary_titles[:120])
+    org_entries = _scan_titles_for_known_organizations(glossary_titles[:120])
+    glossary_html = build_glossary_html(people_entries, org_entries)
+    n_glossary = len(people_entries) + len(org_entries)
 
     # ── Build regional tab ──
     regional_stories_html = build_stories_html(
@@ -1676,6 +2312,23 @@ body {{
     letter-spacing: 0.5px;
     margin-top: 1px;
 }}
+.gloss-meta {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+}}
+.meta-pill {{
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: rgba(0,48,73,0.06);
+    color: rgba(0,48,73,0.72);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}}
 .gloss-bio {{
     font-size: 11px;
     color: rgba(0,48,73,0.78);
@@ -1814,6 +2467,21 @@ body {{
     white-space: nowrap;
     vertical-align: middle;
     border: 1px solid rgba(0,48,73,0.15);
+}}
+.sub-badge {{
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: rgba(0,48,73,0.08);
+    color: rgba(0,48,73,0.78);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    vertical-align: middle;
+    border: 1px solid rgba(0,48,73,0.12);
 }}
 
 /* ── Coverage Dots ── */
@@ -1975,7 +2643,7 @@ a:hover {{ text-decoration: underline; }}
         <button class="tab-btn" data-tab="tab-uy" role="tab">{COUNTRY_FLAGS['uruguay']} Uruguay <span class="tab-count">{len(country_clusters['uruguay'])}</span></button>
         <button class="tab-btn" data-tab="tab-py" role="tab">{COUNTRY_FLAGS['paraguay']} Paraguay <span class="tab-count">{len(country_clusters['paraguay'])}</span></button>
         <button class="tab-btn" data-tab="tab-regional" role="tab">Regional <span class="tab-count">{n_regional}</span></button>
-        <button class="tab-btn" data-tab="tab-glossary" role="tab">Quién es Quién <span class="tab-count">{n_glossary}</span></button>
+        <button class="tab-btn" data-tab="tab-glossary" role="tab">Actores Clave <span class="tab-count">{n_glossary}</span></button>
     </nav>
 
     <section id="tab-ar" class="tab-panel active" role="tabpanel">
@@ -1996,10 +2664,10 @@ a:hover {{ text-decoration: underline; }}
 
     <section id="tab-glossary" class="tab-panel" role="tabpanel">
         <div class="top-story-line">
-            <span class="ts-label">Who's Who · Cono Sur</span>
-            <div class="ts-title">People most prominently mentioned across the region's press in this cycle.</div>
+            <span class="ts-label">Actores Clave · Cono Sur</span>
+            <div class="ts-title">People and institutions most repeatedly mentioned across the region's press in this cycle.</div>
         </div>
-        <p class="sec-desc">Names extracted automatically from today's headlines. Roles and biographical lines are AI-generated factual context, not editorial commentary — verify before citing.</p>
+        <p class="sec-desc">Entities are extracted automatically from today's headlines and ranked with mention count plus confidence signals. Bios are factual context, not editorial commentary.</p>
         {glossary_html}
     </section>
 
@@ -2044,3 +2712,4 @@ a:hover {{ text-decoration: underline; }}
 
 if __name__ == "__main__":
     generate_dashboard()
+
