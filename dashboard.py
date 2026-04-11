@@ -21,6 +21,8 @@ from categorizer import analyze_article
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "news.db")
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "output", "dashboard.html")
@@ -913,6 +915,110 @@ def _llm_extract_glossary(titles):
     return merged[:12]
 
 
+def _llm_chat_cascade(system_prompt, user_msg, json_mode=True, max_tokens=500):
+    """Try LLM providers in order: Mistral → Cerebras → Groq → Gemini.
+
+    Returns the raw text response, or None if all fail.
+    """
+    # ── Mistral ──
+    if MISTRAL_API_KEY:
+        try:
+            body = {
+                "model": "mistral-small-latest",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_msg},
+                ],
+                "temperature": 0.3,
+                "max_tokens": max_tokens,
+            }
+            if json_mode:
+                body["response_format"] = {"type": "json_object"}
+            resp = http_requests.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {MISTRAL_API_KEY}"},
+                json=body,
+                timeout=20,
+            )
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"]
+        except Exception:
+            pass
+
+    # ── Cerebras ──
+    if CEREBRAS_API_KEY:
+        try:
+            body = {
+                "model": "llama3.1-8b",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_msg},
+                ],
+                "temperature": 0.3,
+                "max_tokens": max_tokens,
+            }
+            if json_mode:
+                body["response_format"] = {"type": "json_object"}
+            resp = http_requests.post(
+                "https://api.cerebras.ai/v1/chat/completions",
+                headers={"Authorization": f"Bearer {CEREBRAS_API_KEY}"},
+                json=body,
+                timeout=20,
+            )
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"]
+        except Exception:
+            pass
+
+    # ── Groq ──
+    if GROQ_API_KEY:
+        for attempt in range(2):
+            try:
+                body = {
+                    "model": "llama-3.1-8b-instant",
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_msg},
+                    ],
+                    "temperature": 0.3,
+                    "max_tokens": max_tokens,
+                }
+                if json_mode:
+                    body["response_format"] = {"type": "json_object"}
+                resp = http_requests.post(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
+                    json=body,
+                    timeout=15,
+                )
+                resp.raise_for_status()
+                return resp.json()["choices"][0]["message"]["content"]
+            except Exception:
+                if attempt == 0:
+                    time.sleep(2)
+
+    # ── Gemini (fallback) ──
+    if GEMINI_API_KEY:
+        try:
+            gen_config = {"temperature": 0.3, "maxOutputTokens": max_tokens}
+            if json_mode:
+                gen_config["responseMimeType"] = "application/json"
+            resp = http_requests.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
+                json={
+                    "contents": [{"parts": [{"text": f"{system_prompt}\n\n{user_msg}"}]}],
+                    "generationConfig": gen_config,
+                },
+                timeout=15,
+            )
+            resp.raise_for_status()
+            return resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+        except Exception:
+            pass
+
+    return None
+
+
 def _parse_brief_json(text):
     """Parse LLM response into (summary, context) tuple. Returns (None, None) on failure."""
     if not text:
@@ -941,233 +1047,61 @@ def _parse_brief_json(text):
 
 
 def _llm_synthesize_title(headlines):
-    """Call LLM API to synthesize a title. Tries Groq first, then Gemini."""
+    """Call LLM API to synthesize a title. Tries Mistral → Cerebras → Groq → Gemini."""
     bullet_list = "\n".join(f"- {h}" for h in headlines)
     user_msg = f"Titulares:\n{bullet_list}"
-
-    # Try Groq (Llama 3)
-    if GROQ_API_KEY:
-        try:
-            resp = http_requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [
-                        {"role": "system", "content": _TITLE_PROMPT},
-                        {"role": "user", "content": user_msg},
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": 80,
-                },
-                timeout=10,
-            )
-            resp.raise_for_status()
-            text = resp.json()["choices"][0]["message"]["content"].strip()
-            text = text.strip('"\'""«»\n .')
-            if 5 < len(text) < 130:
-                return text
-        except Exception:
-            pass
-
-    # Try Gemini
-    if GEMINI_API_KEY:
-        try:
-            resp = http_requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={
-                    "contents": [{"parts": [{"text": f"{_TITLE_PROMPT}\n\n{user_msg}"}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 80},
-                },
-                timeout=10,
-            )
-            resp.raise_for_status()
-            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-            text = text.strip('"\'""«»\n .')
-            if 5 < len(text) < 130:
-                return text
-        except Exception:
-            pass
-
+    text = _llm_chat_cascade(_TITLE_PROMPT, user_msg, json_mode=False, max_tokens=80)
+    if text:
+        text = text.strip('"\'""«»\n .')
+        if 5 < len(text) < 130:
+            return text
     return None
 
 
 def _llm_synthesize_title_from_summary(summary_en):
     """Generate a specific Spanish headline derived from the English summary.
 
-    Because the summary is grounded in article bodies, this guarantees the
-    title describes the same concrete event as the summary below it —
-    eliminating the 'Javier Milei y todas sus medidas' style of generic
-    headline mismatched with a specific LIBRA-case summary.
+    Tries Mistral → Cerebras → Groq → Gemini.
     """
     if not summary_en or len(summary_en) < 30:
         return None
     user_msg = f"Summary:\n{summary_en}"
-
-    if GROQ_API_KEY:
-        try:
-            resp = http_requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [
-                        {"role": "system", "content": _TITLE_FROM_SUMMARY_PROMPT},
-                        {"role": "user", "content": user_msg},
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": 80,
-                },
-                timeout=10,
-            )
-            resp.raise_for_status()
-            text = resp.json()["choices"][0]["message"]["content"].strip()
-            text = text.strip('"\'""«»\n .')
-            if 5 < len(text) < 130:
-                return text
-        except Exception:
-            pass
-
-    if GEMINI_API_KEY:
-        try:
-            resp = http_requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={
-                    "contents": [{"parts": [{"text": f"{_TITLE_FROM_SUMMARY_PROMPT}\n\n{user_msg}"}]}],
-                    "generationConfig": {"temperature": 0.2, "maxOutputTokens": 80},
-                },
-                timeout=10,
-            )
-            resp.raise_for_status()
-            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-            text = text.strip('"\'""«»\n .')
-            if 5 < len(text) < 130:
-                return text
-        except Exception:
-            pass
-
+    text = _llm_chat_cascade(_TITLE_FROM_SUMMARY_PROMPT, user_msg, json_mode=False, max_tokens=80)
+    if text:
+        text = text.strip('"\'""«»\n .')
+        if 5 < len(text) < 130:
+            return text
     return None
 
 
 def _llm_synthesize_brief(headlines):
     """Call LLM to synthesize {summary, context}. Returns (summary, context) tuple.
 
-    Tries Groq (Llama) first with retries, then Gemini. Returns (None, None) on failure.
+    Tries Mistral → Cerebras → Groq → Gemini. Returns (None, None) on failure.
     """
     bullet_list = "\n".join(f"- {h}" for h in headlines)
     user_msg = f"Titulares:\n{bullet_list}"
-
-    # Try Groq — up to 2 attempts
-    if GROQ_API_KEY:
-        for attempt in range(2):
-            try:
-                resp = http_requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    json={
-                        "model": "llama-3.1-8b-instant",
-                        "messages": [
-                            {"role": "system", "content": _BRIEF_PROMPT},
-                            {"role": "user", "content": user_msg},
-                        ],
-                        "temperature": 0.3,
-                        "max_tokens": 500,
-                        "response_format": {"type": "json_object"},
-                    },
-                    timeout=15,
-                )
-                resp.raise_for_status()
-                text = resp.json()["choices"][0]["message"]["content"]
-                summary, context = _parse_brief_json(text)
-                if summary:
-                    return summary, context
-            except Exception:
-                if attempt == 0:
-                    time.sleep(2)
-
-    # Try Gemini
-    if GEMINI_API_KEY:
-        try:
-            resp = http_requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={
-                    "contents": [{"parts": [{"text": f"{_BRIEF_PROMPT}\n\n{user_msg}"}]}],
-                    "generationConfig": {
-                        "temperature": 0.3,
-                        "maxOutputTokens": 500,
-                        "responseMimeType": "application/json",
-                    },
-                },
-                timeout=15,
-            )
-            resp.raise_for_status()
-            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-            summary, context = _parse_brief_json(text)
-            if summary:
-                return summary, context
-        except Exception:
-            pass
-
+    text = _llm_chat_cascade(_BRIEF_PROMPT, user_msg)
+    if text:
+        summary, context = _parse_brief_json(text)
+        if summary:
+            return summary, context
     return None, None
 
 
 def _llm_synthesize_brief_with_body(headlines, bodies):
-    """Synthesize {summary, context} using headlines + article body excerpts."""
+    """Synthesize {summary, context} using headlines + article body excerpts.
+
+    Tries Mistral → Cerebras → Groq → Gemini. Falls back to headline-only brief.
+    """
     bullet_list = "\n".join(f"- {h}" for h in headlines)
     body_text = "\n\n".join(bodies[:3])  # max 3 bodies to fit context
     user_msg = f"Titulares:\n{bullet_list}\n\nExcerpts:\n{body_text}"
-
-    # Try Groq first
-    if GROQ_API_KEY:
-        for attempt in range(2):
-            try:
-                resp = http_requests.post(
-                    "https://api.groq.com/openai/v1/chat/completions",
-                    headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                    json={
-                        "model": "llama-3.1-8b-instant",
-                        "messages": [
-                            {"role": "system", "content": _BRIEF_WITH_BODY_PROMPT},
-                            {"role": "user", "content": user_msg},
-                        ],
-                        "temperature": 0.3,
-                        "max_tokens": 500,
-                        "response_format": {"type": "json_object"},
-                    },
-                    timeout=15,
-                )
-                resp.raise_for_status()
-                text = resp.json()["choices"][0]["message"]["content"]
-                summary, context = _parse_brief_json(text)
-                if summary:
-                    return summary, context
-            except Exception:
-                if attempt == 0:
-                    time.sleep(2)
-
-    # Try Gemini
-    if GEMINI_API_KEY:
-        try:
-            resp = http_requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={
-                    "contents": [{"parts": [{"text": f"{_BRIEF_WITH_BODY_PROMPT}\n\n{user_msg}"}]}],
-                    "generationConfig": {
-                        "temperature": 0.3,
-                        "maxOutputTokens": 500,
-                        "responseMimeType": "application/json",
-                    },
-                },
-                timeout=15,
-            )
-            resp.raise_for_status()
-            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-            summary, context = _parse_brief_json(text)
-            if summary:
-                return summary, context
-        except Exception:
-            pass
-
+    text = _llm_chat_cascade(_BRIEF_WITH_BODY_PROMPT, user_msg)
+    if text:
+        summary, context = _parse_brief_json(text)
+        if summary:
+            return summary, context
     # Fall back to headline-only brief
     return _llm_synthesize_brief(headlines)
 
@@ -1982,6 +1916,7 @@ def generate_dashboard():
     for country in COUNTRIES:
         brief_targets.extend(country_clusters[country][:PER_TAB_BRIEF_CAP])
     brief_targets.extend(regional_clusters[:PER_TAB_BRIEF_CAP])
+    failed_briefs = []
     for cl in brief_targets:
         if cl.get("summary") is not None:
             continue  # already done (shouldn't happen, but defensive)
@@ -1995,7 +1930,22 @@ def generate_dashboard():
             refined = _llm_synthesize_title_from_summary(summary)
             if refined:
                 cl["title"] = refined
-        time.sleep(1.5)  # rate-limit friendly
+        else:
+            failed_briefs.append(cl)
+        time.sleep(2)  # rate-limit friendly
+
+    # Retry failed briefs after a cooldown (rate limits may have cleared)
+    if failed_briefs:
+        time.sleep(10)
+        for cl in failed_briefs:
+            summary, context = _generate_story_brief(cl["articles"])
+            cl["summary"] = summary
+            cl["context"] = context
+            if summary:
+                refined = _llm_synthesize_title_from_summary(summary)
+                if refined:
+                    cl["title"] = refined
+            time.sleep(3)
 
     # ── Build country tabs ──
     used_top_titles = set()
