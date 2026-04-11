@@ -3,11 +3,14 @@
 import os
 import time
 import sqlite3
+import re
 from datetime import datetime
 
 import requests
 import feedparser
 from bs4 import BeautifulSoup
+
+from categorizer import analyze_article
 
 # Playwright browser — lazy-loaded, shared across all feeds in a single run
 _pw_instance = None
@@ -45,6 +48,11 @@ def _close_playwright():
         _pw_instance = None
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "news.db")
+
+
+def _title_dedupe_key(title):
+    text = re.sub(r"\W+", " ", (title or "").lower()).strip()
+    return re.sub(r"\s+", " ", text)
 
 # Each feed has an explicit section → category mapping
 # "type": "rss" = try RSS first; "html" = HTML scrape only (used as fallback)
@@ -148,6 +156,40 @@ SOURCES = [
         {"url": "https://www.hoy.com.py/dinero-y-negocios", "category": "economia", "type": "html"},
         {"url": "https://www.hoy.com.py/mundo", "category": "internacional", "type": "html"},
     ]},
+    # Uruguay — La República (daily close to Frente Amplio)
+    {"name": "La Republica", "country": "uruguay", "feeds": [
+        {"url": "https://www.republica.com.uy/politica", "category": "politica", "type": "html"},
+        {"url": "https://www.republica.com.uy/economia", "category": "economia", "type": "html"},
+        {"url": "https://www.republica.com.uy/mundo", "category": "internacional", "type": "html"},
+    ]},
+    # Uruguay — Búsqueda (weekly, political and business scoops)
+    {"name": "Busqueda", "country": "uruguay", "feeds": [
+        {"url": "https://www.busqueda.com.uy/politica", "category": "politica", "type": "html"},
+        {"url": "https://www.busqueda.com.uy/economia", "category": "economia", "type": "html"},
+    ]},
+    # Uruguay — Subrayado (TV news site, strong daily politics coverage)
+    {"name": "Subrayado", "country": "uruguay", "feeds": [
+        {"url": "https://www.subrayado.com.uy/politica-a29", "category": "politica", "type": "html"},
+        {"url": "https://www.subrayado.com.uy/economia-a30", "category": "economia", "type": "html"},
+    ]},
+    # Paraguay — 5Días (business daily)
+    {"name": "5Dias", "country": "paraguay", "feeds": [
+        {"url": "https://5dias.com.py/category/politica/", "category": "politica", "type": "html"},
+        {"url": "https://5dias.com.py/category/nacionales/", "category": "politica", "type": "html"},
+        {"url": "https://5dias.com.py/category/economia/", "category": "economia", "type": "html"},
+        {"url": "https://5dias.com.py/category/mundo/", "category": "internacional", "type": "html"},
+    ]},
+    # Paraguay — Crónica (popular daily)
+    {"name": "Cronica PY", "country": "paraguay", "feeds": [
+        {"url": "https://www.cronica.com.py/nacionales", "category": "politica", "type": "html"},
+        {"url": "https://www.cronica.com.py/politica", "category": "politica", "type": "html"},
+        {"url": "https://www.cronica.com.py/mundo", "category": "internacional", "type": "html"},
+    ]},
+    # Paraguay — IP Paraguay (state wire, official agenda)
+    {"name": "IP Paraguay", "country": "paraguay", "feeds": [
+        {"url": "https://www.ip.gov.py/ip/category/nacionales/politica/", "category": "politica", "type": "html"},
+        {"url": "https://www.ip.gov.py/ip/category/economia/", "category": "economia", "type": "html"},
+    ]},
 ]
 
 HEADERS = {
@@ -169,9 +211,26 @@ def init_db():
             published_at TEXT,
             scraped_at TEXT,
             category TEXT,
+            subcategory TEXT,
+            category_confidence REAL,
+            fetch_method TEXT,
+            section_url TEXT,
             UNIQUE(url)
         )
     """)
+    existing = {
+        row[1]
+        for row in conn.execute("PRAGMA table_info(articles)").fetchall()
+    }
+    migrations = {
+        "subcategory": "ALTER TABLE articles ADD COLUMN subcategory TEXT",
+        "category_confidence": "ALTER TABLE articles ADD COLUMN category_confidence REAL",
+        "fetch_method": "ALTER TABLE articles ADD COLUMN fetch_method TEXT",
+        "section_url": "ALTER TABLE articles ADD COLUMN section_url TEXT",
+    }
+    for column, ddl in migrations.items():
+        if column not in existing:
+            conn.execute(ddl)
     conn.commit()
     return conn
 
@@ -187,14 +246,25 @@ def _fetch_rss(feed_url, source_name, country, category):
             title = entry.get("title", "").strip()
             link = entry.get("link", "").strip()
             pub = entry.get("published", entry.get("updated", ""))
-            if title and link:
+            analysis = analyze_article(
+                title,
+                link,
+                source=source_name,
+                fallback=category,
+                strict=False,
+            )
+            if title and link and analysis["accepted"]:
                 articles.append({
                     "source": source_name,
                     "country": country,
                     "title": title,
                     "url": link,
                     "published_at": pub or datetime.now().isoformat(),
-                    "category": category,
+                    "category": analysis["category"],
+                    "subcategory": analysis["subcategory"],
+                    "category_confidence": analysis["confidence"],
+                    "fetch_method": "rss",
+                    "section_url": feed_url,
                 })
     except Exception:
         pass
@@ -219,6 +289,15 @@ def _fetch_html(page_url, source_name, country, category):
                 link = base_url.rstrip("/") + "/" + link.lstrip("/")
             if not link:
                 continue
+            analysis = analyze_article(
+                title,
+                link,
+                source=source_name,
+                fallback=category,
+                strict=True,
+            )
+            if not analysis["accepted"]:
+                continue
             seen.add(title)
             articles.append({
                 "source": source_name,
@@ -226,7 +305,11 @@ def _fetch_html(page_url, source_name, country, category):
                 "title": title,
                 "url": link,
                 "published_at": datetime.now().isoformat(),
-                "category": category,
+                "category": analysis["category"],
+                "subcategory": analysis["subcategory"],
+                "category_confidence": analysis["confidence"],
+                "fetch_method": "html",
+                "section_url": page_url,
             })
     except Exception:
         pass
@@ -267,6 +350,15 @@ def _fetch_html_playwright(page_url, source_name, country, category):
                 continue
             if not link.startswith("http"):
                 link = base_url.rstrip("/") + "/" + link.lstrip("/")
+            analysis = analyze_article(
+                title,
+                link,
+                source=source_name,
+                fallback=category,
+                strict=True,
+            )
+            if not analysis["accepted"]:
+                continue
             seen.add(title)
             articles.append({
                 "source": source_name,
@@ -274,7 +366,11 @@ def _fetch_html_playwright(page_url, source_name, country, category):
                 "title": title,
                 "url": link,
                 "published_at": datetime.now().isoformat(),
-                "category": category,
+                "category": analysis["category"],
+                "subcategory": analysis["subcategory"],
+                "category_confidence": analysis["confidence"],
+                "fetch_method": "playwright",
+                "section_url": page_url,
             })
 
         page.close()
@@ -293,6 +389,7 @@ def scrape_source(source):
     """Scrape all feeds for a source. RSS first, then Playwright HTML to complement."""
     all_articles = []
     seen_urls = set()
+    seen_titles = set()
     rss_feeds = [f for f in source["feeds"] if f["type"] == "rss"]
     html_feeds = [f for f in source["feeds"] if f["type"] == "html"]
 
@@ -300,8 +397,10 @@ def scrape_source(source):
     for feed in rss_feeds:
         arts = _fetch_rss(feed["url"], source["name"], source["country"], feed["category"])
         for a in arts:
-            if a["url"] not in seen_urls:
+            title_key = _title_dedupe_key(a["title"])
+            if a["url"] not in seen_urls and title_key not in seen_titles:
                 seen_urls.add(a["url"])
+                seen_titles.add(title_key)
                 all_articles.append(a)
         time.sleep(0.5)
 
@@ -311,8 +410,10 @@ def scrape_source(source):
         for feed in html_feeds:
             arts = _fetch_html_playwright(feed["url"], source["name"], source["country"], feed["category"])
             for a in arts:
-                if a["url"] not in seen_urls:
+                title_key = _title_dedupe_key(a["title"])
+                if a["url"] not in seen_urls and title_key not in seen_titles:
                     seen_urls.add(a["url"])
+                    seen_titles.add(title_key)
                     all_articles.append(a)
             time.sleep(0.5)
 
@@ -325,21 +426,72 @@ def insert_articles(conn, articles):
     for art in articles:
         try:
             conn.execute(
-                "INSERT OR IGNORE INTO articles (source, country, title, url, published_at, scraped_at, category) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "INSERT OR IGNORE INTO articles ("
+                "source, country, title, url, published_at, scraped_at, category, "
+                "subcategory, category_confidence, fetch_method, section_url"
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (art["source"], art["country"], art["title"], art["url"],
-                 art["published_at"], now, art["category"]),
+                 art["published_at"], now, art["category"], art.get("subcategory"),
+                 art.get("category_confidence"), art.get("fetch_method"), art.get("section_url")),
             )
         except sqlite3.IntegrityError:
             pass
     conn.commit()
 
 
+def normalize_existing_articles(conn):
+    """Reclassify legacy rows and purge obvious noise from prior runs."""
+    rows = conn.execute(
+        "SELECT id, source, title, url, category, fetch_method, scraped_at FROM articles ORDER BY scraped_at DESC"
+    ).fetchall()
+    removed = 0
+    updated = 0
+    seen_pairs = set()
+    for article_id, source, title, url, category, fetch_method, _scraped_at in rows:
+        pair = ((source or "").lower(), _title_dedupe_key(title))
+        if pair in seen_pairs:
+            conn.execute("DELETE FROM articles WHERE id = ?", (article_id,))
+            removed += 1
+            continue
+        seen_pairs.add(pair)
+        strict = fetch_method in {"html", "playwright"}
+        analysis = analyze_article(
+            title,
+            url,
+            source=source or "",
+            fallback=category,
+            strict=strict,
+        )
+        if not analysis["accepted"]:
+            conn.execute("DELETE FROM articles WHERE id = ?", (article_id,))
+            removed += 1
+            continue
+        conn.execute(
+            "UPDATE articles SET category = ?, subcategory = ?, category_confidence = ?, "
+            "fetch_method = COALESCE(fetch_method, ?), section_url = COALESCE(section_url, url) "
+            "WHERE id = ?",
+            (
+                analysis["category"],
+                analysis["subcategory"],
+                analysis["confidence"],
+                fetch_method or "legacy",
+                article_id,
+            ),
+        )
+        updated += 1
+    conn.commit()
+    return removed, updated
+
+
 def run_scraper():
     """Main scraper entry point."""
     conn = init_db()
+    removed, normalized = normalize_existing_articles(conn)
     total_new = 0
     summary = {}
+
+    if removed or normalized:
+        print(f"   Limpieza historica: {removed} descartados, {normalized} re-evaluados")
 
     for src in SOURCES:
         print(f"   -> {src['name']} ({src['country']})...", end=" ")
