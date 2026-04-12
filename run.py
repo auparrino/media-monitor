@@ -26,9 +26,11 @@ def main():
     from dashboard import generate_dashboard
     generate_dashboard()
 
+
     print(f"\n✓  Listo: output/dashboard.html")
     print(f"   Abrí en browser e imprimí con Ctrl+P → A4\n")
 
 
 if __name__ == "__main__":
     main()
+

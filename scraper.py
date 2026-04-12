@@ -50,6 +50,32 @@ def _close_playwright():
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "news.db")
 
 
+def _clean_title(title: str) -> str:
+    """Normalise a scraped title: strip section-header prefixes, newlines, junk."""
+    if not title:
+        return ""
+    # Strip ALL-CAPS section-header lines that precede the real title
+    # e.g. "VIDEO\nSome real title" → "Some real title"
+    # e.g. "FECHA 11\nDeportivo..." → "Deportivo..."
+    lines = title.split("\n")
+    cleaned_lines = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        # Skip pure ALL-CAPS lines (section headers like VIDEO, INTERNACIONALES, FECHA 11)
+        if re.match(r'^[A-ZÁÉÍÓÚÑ0-9 /\-]{3,}$', stripped) and len(stripped) < 60:
+            continue
+        cleaned_lines.append(stripped)
+    title = " ".join(cleaned_lines)
+    # Collapse whitespace
+    title = re.sub(r'\s+', ' ', title).strip()
+    # Strip leading ">" artefacts
+    if title.startswith(">"):
+        title = title.lstrip("> ").strip()
+    return title
+
+
 def _title_dedupe_key(title):
     text = re.sub(r"\W+", " ", (title or "").lower()).strip()
     return re.sub(r"\s+", " ", text)
@@ -243,7 +269,7 @@ def _fetch_rss(feed_url, source_name, country, category):
         resp.raise_for_status()
         feed = feedparser.parse(resp.content)
         for entry in feed.entries[:25]:
-            title = entry.get("title", "").strip()
+            title = _clean_title(entry.get("title", ""))
             link = entry.get("link", "").strip()
             pub = entry.get("published", entry.get("updated", ""))
             analysis = analyze_article(
@@ -266,8 +292,8 @@ def _fetch_rss(feed_url, source_name, country, category):
                     "fetch_method": "rss",
                     "section_url": feed_url,
                 })
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"  [WARN] RSS {source_name} {feed_url}: {type(exc).__name__}: {exc}")
     return articles
 
 
@@ -281,9 +307,12 @@ def _fetch_html(page_url, source_name, country, category):
         base_url = "/".join(page_url.split("/")[:3])
         seen = set()
         for tag in soup.find_all(["h1", "h2", "h3", "a"], limit=80):
-            title = tag.get_text(strip=True)
+            title = _clean_title(tag.get_text())
             link = tag.get("href", "")
             if not title or len(title) < 20 or title in seen:
+                continue
+            # Skip photo galleries and video roundups
+            if re.search(r'\d+\s*FOTOS?\b', title, re.I):
                 continue
             if link and not link.startswith("http"):
                 link = base_url.rstrip("/") + "/" + link.lstrip("/")
@@ -311,8 +340,8 @@ def _fetch_html(page_url, source_name, country, category):
                 "fetch_method": "html",
                 "section_url": page_url,
             })
-    except Exception:
-        pass
+    except Exception as exc:
+        print(f"  [WARN] HTML {source_name} {page_url}: {type(exc).__name__}: {exc}")
     return articles
 
 
@@ -338,15 +367,18 @@ def _fetch_html_playwright(page_url, source_name, country, category):
                 link = el.get_attribute("href") or ""
                 if not link or link == "#" or link.startswith("javascript:"):
                     continue
-                title = el.inner_text().strip()
+                title = _clean_title(el.inner_text())
                 # Also check if the link wraps a heading
                 if not title or len(title) < 20:
                     heading = el.query_selector("h1, h2, h3, h4, span")
                     if heading:
-                        title = heading.inner_text().strip()
+                        title = _clean_title(heading.inner_text())
             except Exception:
                 continue
             if not title or len(title) < 20 or title in seen:
+                continue
+            # Skip photo galleries and video roundups
+            if re.search(r'\d+\s*FOTOS?\b', title, re.I):
                 continue
             if not link.startswith("http"):
                 link = base_url.rstrip("/") + "/" + link.lstrip("/")
@@ -374,8 +406,8 @@ def _fetch_html_playwright(page_url, source_name, country, category):
             })
 
         page.close()
-    except Exception:
-        # If Playwright fails for this page, fall back to requests
+    except Exception as exc:
+        print(f"  [WARN] Playwright {source_name} {page_url}: {type(exc).__name__}: {exc}")
         return _fetch_html(page_url, source_name, country, category)
 
     # If Playwright got nothing, try requests as last resort
@@ -440,9 +472,15 @@ def insert_articles(conn, articles):
 
 
 def normalize_existing_articles(conn):
-    """Reclassify legacy rows and purge obvious noise from prior runs."""
+    """Reclassify recent rows and purge obvious noise from prior runs.
+
+    Only processes articles from the last 72 hours to avoid re-evaluating
+    the entire DB on every run.
+    """
     rows = conn.execute(
-        "SELECT id, source, title, url, category, fetch_method, scraped_at FROM articles ORDER BY scraped_at DESC"
+        "SELECT id, source, title, url, category, fetch_method, scraped_at "
+        "FROM articles WHERE scraped_at >= datetime('now', '-72 hours') "
+        "ORDER BY scraped_at DESC"
     ).fetchall()
     removed = 0
     updated = 0
@@ -508,6 +546,11 @@ def run_scraper():
     print(f"\n   Resumen: {total_new} articulos nuevos en total")
     for name, count in summary.items():
         print(f"     {name}: +{count}")
+
+    # Warn about sources that returned zero articles
+    zero_sources = [name for name, count in summary.items() if count == 0]
+    if zero_sources:
+        print(f"\n   ⚠ Fuentes sin articulos nuevos: {', '.join(zero_sources)}")
 
     # Check if DB has fewer than 15 articles total
     total = conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0]

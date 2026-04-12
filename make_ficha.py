@@ -1,390 +1,382 @@
 """
 Cono Sur Media Monitor — 2-page project ficha.
-Style mirrors politicdash_ficha_v3.pdf:
-  Page 1 — overview, description, features, screenshot
-  Page 2 — IN ACTION (screenshots grid), feature list, DATA AT A GLANCE band
+Page 1: single-column flow (no overlaps)
+Page 2: 3 screenshots + features + QR + DATA band
 """
 
-import os
+import os, io
+import qrcode
+from PIL import Image as PILImage
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
-from reportlab.lib.colors import HexColor, white
+from reportlab.lib.colors import HexColor
 from reportlab.pdfgen import canvas
 from reportlab.lib.utils import ImageReader
 
-# ── Paths ────────────────────────────────────────────────────────────────────
-BASE = os.path.dirname(os.path.abspath(__file__))
-SCREENSHOT = os.path.join(BASE, "output", "_dashboard_screenshot.png")
-OUTPUT    = os.path.join(BASE, "output", "ficha_conosur_monitor.pdf")
+BASE  = os.path.dirname(os.path.abspath(__file__))
+SS    = os.path.join(BASE, "output", "_dashboard_screenshot.png")
+OUT   = os.path.join(BASE, "output", "ficha_conosur_monitor_v2.pdf")
 
-# ── Palette (same as dashboard) ───────────────────────────────────────────────
 NAVY      = HexColor("#003049")
 CRIMSON   = HexColor("#C1121F")
 CREAM     = HexColor("#FDF0D5")
+CREAM_DRK = HexColor("#EDE0C0")
 BLUE_GREY = HexColor("#669BBC")
 WHITE     = HexColor("#FFFFFF")
+DARK      = HexColor("#1A1A1A")
 MID       = HexColor("#555555")
-DARK      = HexColor("#222222")
-LIGHT_BG  = HexColor("#F5F0E8")
-SHADOW    = HexColor("#E0D8C8")
+SHADOW    = HexColor("#C8BC9E")
 
-W, H = A4   # 595.28 × 841.89 pt
-MARGIN = 17 * mm
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _header_bar(c, title_left, subtitle_left, label_right, y_top, height=14*mm):
-    """Navy header bar with left title + right label."""
-    c.setFillColor(NAVY)
-    c.rect(0, y_top - height, W, height, fill=1, stroke=0)
-    # left title
-    c.setFillColor(CREAM)
-    c.setFont("Helvetica-Bold", 15)
-    c.drawString(MARGIN, y_top - height + 4.5*mm, title_left)
-    # left subtitle
-    if subtitle_left:
-        c.setFillColor(BLUE_GREY)
-        c.setFont("Helvetica", 8)
-        tw = c.stringWidth(title_left, "Helvetica-Bold", 15)
-        c.drawString(MARGIN + tw + 5*mm, y_top - height + 5*mm, subtitle_left)
-    # right label
-    if label_right:
-        c.setFillColor(BLUE_GREY)
-        c.setFont("Helvetica", 8)
-        c.drawRightString(W - MARGIN, y_top - height + 5*mm, label_right)
-    # crimson accent line below header
-    c.setStrokeColor(CRIMSON)
-    c.setLineWidth(2)
-    c.line(0, y_top - height - 1*mm, W, y_top - height - 1*mm)
+W, H   = A4                # 595.28 × 841.89 pt
+M      = 16 * mm
+HDR_H  = 14 * mm
+FTR_H  = 8.5 * mm
+INNER  = W - 2 * M        # usable width
 
 
-def _footer_bar(c, left_text, right_text, height=8*mm):
-    c.setFillColor(NAVY)
-    c.rect(0, 0, W, height, fill=1, stroke=0)
-    c.setFillColor(BLUE_GREY)
-    c.setFont("Helvetica", 7)
-    c.drawString(MARGIN, 2.6*mm, left_text)
-    c.drawRightString(W - MARGIN, 2.6*mm, right_text)
+# ── Screenshot crops ──────────────────────────────────────────────────────────
+
+def prepare_crops():
+    """Crop the dashboard screenshot into 3 focused regions."""
+    if not os.path.exists(SS):
+        return None, None, None
+    img = PILImage.open(SS)
+    W2, H2 = img.size
+    # Remove side cream margins: content starts ~x=260, ends ~x=2110
+    cx1, cx2 = 260, 2110
+    # Crop 1 — hero: letterhead + overview (top 38%)
+    c1 = img.crop((cx1, 0,        cx2, int(H2 * 0.38)))
+    # Crop 2 — key stories detail (25%–68%)
+    c2 = img.crop((cx1, int(H2 * 0.25), cx2, int(H2 * 0.68)))
+    # Crop 3 — also reported (58%–95%)
+    c3 = img.crop((cx1, int(H2 * 0.58), cx2, int(H2 * 0.95)))
+    paths = []
+    for i, crop in enumerate([c1, c2, c3], 1):
+        p = os.path.join(BASE, "output", f"_ss_crop{i}.png")
+        crop.save(p)
+        paths.append(p)
+    return paths
 
 
-def _place_image(c, path, x, y, max_w, max_h, shadow=True):
-    """Draw image scaled to fit max_w × max_h, return actual height drawn."""
-    if not os.path.exists(path):
+def img_reader(path):
+    if path and os.path.exists(path):
+        return ImageReader(path)
+    return None
+
+
+def draw_img(c, path, x, y_top, max_w, max_h, shadow=True, radius=0):
+    """Draw image scaled to fit. Returns actual height drawn (0 if no file)."""
+    ir = img_reader(path)
+    if ir is None:
         return 0
-    img = ImageReader(path)
-    iw, ih = img.getSize()
+    iw, ih = ir.getSize()
     scale = min(max_w / iw, max_h / ih)
     dw, dh = iw * scale, ih * scale
+    ix = x + (max_w - dw) / 2
+    iy = y_top - dh
     if shadow:
         c.setFillColor(SHADOW)
-        c.rect(x + 1.5, y - dh - 1.5, dw, dh, fill=1, stroke=0)
-    c.drawImage(path, x, y - dh, dw, dh)
-    c.setStrokeColor(HexColor("#CCCCCC"))
-    c.setLineWidth(0.4)
-    c.rect(x, y - dh, dw, dh, fill=0, stroke=1)
+        c.rect(ix + 2, iy - 2, dw, dh, fill=1, stroke=0)
+    c.drawImage(path, ix, iy, dw, dh)
+    c.setStrokeColor(HexColor("#BBBBBB"))
+    c.setLineWidth(0.5)
+    c.rect(ix, iy, dw, dh, fill=0, stroke=1)
     return dh
 
 
-def _stat_block(c, x, y, number, label, num_size=28, lbl_size=8):
-    """Big number + small label centered at (x, y)."""
-    c.setFont("Helvetica-Bold", num_size)
-    c.setFillColor(CREAM)
-    nw = c.stringWidth(number, "Helvetica-Bold", num_size)
-    c.drawString(x - nw/2, y, number)
-    c.setFont("Helvetica", lbl_size)
-    c.setFillColor(BLUE_GREY)
-    lw = c.stringWidth(label, "Helvetica", lbl_size)
-    c.drawString(x - lw/2, y - lbl_size*0.9, label)
+# ── Reusable chrome ───────────────────────────────────────────────────────────
 
-
-def _bullet(c, x, y, text, font_size=9, color=None):
-    c.setFont("Helvetica", font_size)
-    c.setFillColor(color or MID)
-    c.drawString(x, y, f"\u2022  {text}")
-    return y - font_size * 1.55
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE 1 — Overview
-# ══════════════════════════════════════════════════════════════════════════════
-
-def page1(c, site_url):
-    HEADER_H = 14 * mm
-    FOOTER_H = 8 * mm
-
-    # ── Header ──
-    _header_bar(c,
-                "CONO SUR MEDIA MONITOR",
-                "Daily Intelligence Briefing  |  Argentina \u00b7 Uruguay \u00b7 Paraguay",
-                "Personal Project | 2025\u20132026",
-                H, HEADER_H)
-
-    # ── Tag row ──
-    y = H - HEADER_H - 3*mm
-    c.setFillColor(CRIMSON)
-    c.rect(MARGIN, y - 5*mm, 28*mm, 5*mm, fill=1, stroke=0)
-    c.setFillColor(WHITE)
-    c.setFont("Helvetica-Bold", 8)
-    c.drawString(MARGIN + 2*mm, y - 3.8*mm, "CONO SUR")
-
-    c.setFillColor(DARK)
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN + 31*mm, y - 3.8*mm, "Personal Project  |  2025\u20132026")
-
-    # ── Main title ──
-    y -= 9*mm
+def draw_header(c, left, right=""):
     c.setFillColor(NAVY)
-    c.setFont("Helvetica-Bold", 22)
-    c.drawString(MARGIN, y, "MEDIA MONITOR")
+    c.rect(0, H - HDR_H, W, HDR_H, fill=1, stroke=0)
+    c.setFillColor(CREAM)
+    c.setFont("Helvetica-Bold", 13)
+    c.drawString(M, H - HDR_H + 4.2 * mm, left)
+    if right:
+        c.setFillColor(BLUE_GREY)
+        c.setFont("Helvetica", 7.5)
+        c.drawRightString(W - M, H - HDR_H + 4.5 * mm, right)
+    c.setStrokeColor(CRIMSON)
+    c.setLineWidth(2.5)
+    c.line(0, H - HDR_H - 0.7 * mm, W, H - HDR_H - 0.7 * mm)
 
-    # ── URL ──
-    y -= 6*mm
+
+def draw_footer(c, left, right):
+    c.setFillColor(NAVY)
+    c.rect(0, 0, W, FTR_H, fill=1, stroke=0)
+    c.setFillColor(BLUE_GREY)
+    c.setFont("Helvetica", 6.5)
+    c.drawString(M, 2.5 * mm, left)
+    c.drawRightString(W - M, 2.5 * mm, right)
+
+
+def cream_page(c):
+    c.setFillColor(CREAM)
+    c.rect(0, 0, W, H, fill=1, stroke=0)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PAGE 1 — Overview (strict top-to-bottom flow)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def page1(c, crop1):
+    cream_page(c)
+    draw_header(c, "CONO SUR  MEDIA MONITOR", "Proyecto personal · 2025–2026")
+    draw_footer(c, "Cono Sur Media Monitor",
+                "Argentina  ·  Uruguay  ·  Paraguay")
+
+    # y tracks the current drawing position (top of next element)
+    y = H - HDR_H - 5 * mm
+
+    # ── Red tag + project line ────────────────────────────────────────────────
+    TAG_W = 25 * mm
+    c.setFillColor(CRIMSON)
+    c.roundRect(M, y - 5 * mm, TAG_W, 5 * mm, 1.2 * mm, fill=1, stroke=0)
+    c.setFillColor(WHITE)
+    c.setFont("Helvetica-Bold", 7.5)
+    c.drawCentredString(M + TAG_W / 2, y - 3.6 * mm, "CONO SUR")
+    c.setFillColor(MID)
+    c.setFont("Helvetica", 8)
+    c.drawString(M + TAG_W + 4 * mm, y - 3.6 * mm, "Proyecto personal  ·  2025–2026")
+    y -= 8 * mm
+
+    # ── Title ─────────────────────────────────────────────────────────────────
+    c.setFillColor(NAVY)
+    c.setFont("Helvetica-Bold", 26)
+    c.drawString(M, y, "MEDIA MONITOR")
+    y -= 6 * mm
     c.setFillColor(BLUE_GREY)
     c.setFont("Helvetica", 9)
-    c.drawString(MARGIN, y, site_url)
+    c.drawString(M, y, "Briefing diario automatizado del Cono Sur")
+    y -= 3 * mm
 
-    # ── Stats row ──
-    y -= 8*mm
-    stats = [
-        ("14",   "news sources"),
-        ("3",    "countries"),
-        ("500+", "articles/day"),
-    ]
-    c.setFillColor(NAVY)
-    col_w = (W - 2*MARGIN) / len(stats)
+    # ── Crimson rule ──────────────────────────────────────────────────────────
+    c.setStrokeColor(CRIMSON)
+    c.setLineWidth(1.5)
+    c.line(M, y, W - M, y)
+    y -= 6 * mm
+
+    # ── Stat cards ────────────────────────────────────────────────────────────
+    CARD_W = 38 * mm
+    CARD_H = 17 * mm
+    GAP    = (INNER - 3 * CARD_W) / 2
+    stats  = [("14", "diarios"), ("3", "países"), ("Diario", "actualización")]
     for i, (num, lbl) in enumerate(stats):
-        cx = MARGIN + col_w * i + col_w / 2
-        c.setFont("Helvetica-Bold", 22)
+        cx = M + i * (CARD_W + GAP)
         c.setFillColor(NAVY)
-        nw = c.stringWidth(num, "Helvetica-Bold", 22)
-        c.drawString(cx - nw/2, y, num)
-        c.setFont("Helvetica", 8)
-        c.setFillColor(MID)
-        lw = c.stringWidth(lbl, "Helvetica", 8)
-        c.drawString(cx - lw/2, y - 4*mm, lbl)
+        c.roundRect(cx, y - CARD_H, CARD_W, CARD_H, 2 * mm, fill=1, stroke=0)
+        c.setFillColor(CREAM)
+        c.setFont("Helvetica-Bold", 18)
+        nw = c.stringWidth(num, "Helvetica-Bold", 18)
+        c.drawString(cx + CARD_W / 2 - nw / 2, y - CARD_H + 6.5 * mm, num)
+        c.setFillColor(BLUE_GREY)
+        c.setFont("Helvetica", 7)
+        lw = c.stringWidth(lbl, "Helvetica", 7)
+        c.drawString(cx + CARD_W / 2 - lw / 2, y - CARD_H + 2 * mm, lbl)
+    y -= CARD_H + 6 * mm
 
-    # thin separator
-    y -= 9*mm
-    c.setStrokeColor(HexColor("#DDDDDD"))
-    c.setLineWidth(0.5)
-    c.line(MARGIN, y, W - MARGIN, y)
-    y -= 4*mm
-
-    # ── Description ──
-    usable_w = W - 2*MARGIN
-    LEFT_W  = usable_w * 0.55   # description + features
-    RIGHT_X = MARGIN + LEFT_W + 5*mm
-    RIGHT_W = usable_w - LEFT_W - 5*mm
-    desc_y  = y
-
+    # ── Description ───────────────────────────────────────────────────────────
     c.setFillColor(DARK)
-    c.setFont("Helvetica-Bold", 10.5)
-    c.drawString(MARGIN, y,
-                 "Automated daily news briefing for the Southern Cone")
-    y -= 5*mm
+    c.setFont("Helvetica-Bold", 10)
+    c.drawString(M, y, "¿Qué es?")
+    y -= 5 * mm
+    c.setFillColor(MID)
+    c.setFont("Helvetica", 8.5)
+    for line in [
+        "Cada mañana lee automáticamente 14 diarios de Argentina,",
+        "Uruguay y Paraguay, agrupa las noticias por evento y genera",
+        "un resumen listo para leer o imprimir en menos de un minuto.",
+    ]:
+        c.drawString(M, y, line)
+        y -= 4 * mm
+    y -= 4 * mm
 
+    # ── Hero screenshot (full content width) ─────────────────────────────────
+    # remaining space: y  →  FTR_H + features_h + gap
+    FEAT_H = 36 * mm
+    GAP_AF = 6 * mm
+    ss_max_h = y - FTR_H - FEAT_H - GAP_AF - 3 * mm
+    dh = draw_img(c, crop1, M, y, INNER, ss_max_h)
+    y -= dh + GAP_AF
+
+    # ── Features 2×2 grid ─────────────────────────────────────────────────────
+    feats = [
+        ("01", "Resumen por país",
+               "La noticia más importante del día en cada país"),
+        ("02", "Historias del día",
+               "Las noticias cubiertas por más de un diario, rankeadas"),
+        ("03", "Distintas miradas",
+               "Cómo cada medio tituló la misma historia"),
+        ("04", "Listo para imprimir",
+               "Abrís, imprimís (Ctrl+P), listo — A4 portrait"),
+    ]
+    col_w  = (INNER - 6 * mm) / 2
+    row_h  = 15 * mm
+    fy = y
+    for i, (num, title, desc) in enumerate(feats):
+        col  = i % 2
+        row  = i // 2
+        fx   = M + col * (col_w + 6 * mm)
+        fy_i = fy - row * (row_h + 3 * mm)
+        # light card background
+        c.setFillColor(CREAM_DRK)
+        c.roundRect(fx, fy_i - row_h, col_w, row_h, 1.5 * mm, fill=1, stroke=0)
+        # number badge
+        c.setFillColor(CRIMSON)
+        c.roundRect(fx + 2 * mm, fy_i - row_h + (row_h - 5 * mm) / 2,
+                    7 * mm, 5 * mm, 1 * mm, fill=1, stroke=0)
+        c.setFillColor(WHITE)
+        c.setFont("Helvetica-Bold", 7)
+        c.drawCentredString(fx + 5.5 * mm, fy_i - row_h + (row_h - 5 * mm) / 2 + 1.5 * mm, num)
+        # title
+        c.setFillColor(NAVY)
+        c.setFont("Helvetica-Bold", 8.5)
+        c.drawString(fx + 11 * mm, fy_i - 5 * mm, title)
+        # desc
+        c.setFillColor(MID)
+        c.setFont("Helvetica", 7.5)
+        c.drawString(fx + 11 * mm, fy_i - 9 * mm, desc)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  PAGE 2 — En Acción
+# ══════════════════════════════════════════════════════════════════════════════
+
+def make_qr(url):
+    qr = qrcode.QRCode(version=2,
+                       error_correction=qrcode.constants.ERROR_CORRECT_M,
+                       box_size=10, border=3)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#003049", back_color="#FDF0D5")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    buf.seek(0)
+    return ImageReader(buf)
+
+
+def page2(c, crop2, crop3, qr_url):
+    DATA_H = 34 * mm
+
+    cream_page(c)
+    draw_header(c, "EN ACCIÓN", "Cono Sur Media Monitor")
+    draw_footer(c,
+        "Datos: Infobae · La Nación · Clarín · El Observador · ABC Color · y más",
+        "Actualizado cada día")
+
+    y = H - HDR_H - 5 * mm
+
+    # ── Large screenshot (full width) ─────────────────────────────────────────
+    dh1 = draw_img(c, crop2, M, y, INNER, 90 * mm)
+    y -= dh1 + 5 * mm
+
+    # ── Two screenshots side by side ──────────────────────────────────────────
+    half_w = (INNER - 5 * mm) / 2
+    dh2a = draw_img(c, crop3, M,             y, half_w, 68 * mm)
+    dh2b = draw_img(c, crop2, M + half_w + 5 * mm, y, half_w, 68 * mm)
+    y -= max(dh2a, dh2b) + 7 * mm
+
+    # ── Features (left) + QR (right) ─────────────────────────────────────────
+    QR_COL  = 42 * mm
+    TXT_COL = INNER - QR_COL - 6 * mm
+
+    # — Left: feature bullets —
+    c.setFillColor(NAVY)
+    c.setFont("Helvetica-Bold", 9.5)
+    c.drawString(M, y, "Lo que podés explorar")
+    c.setStrokeColor(CRIMSON)
+    c.setLineWidth(1.5)
+    c.line(M, y - 1.5 * mm, M + 56 * mm, y - 1.5 * mm)
+    by = y - 7 * mm
+    bullets = [
+        "Cliqueá cualquier noticia para leer la nota completa",
+        "Compará cómo distintos diarios titularon el mismo evento",
+        "Filtrá por país: Argentina, Uruguay o Paraguay",
+        "Imprimí el briefing directo desde el navegador (Ctrl+P)",
+        "Se actualiza solo, todos los días por la mañana",
+    ]
     c.setFont("Helvetica", 8.5)
     c.setFillColor(MID)
-    lines = [
-        "Scrapes 14 newspapers across Argentina, Uruguay and Paraguay",
-        "every day — then groups articles by event, synthesises headlines",
-        "with AI, and produces a print-ready briefing document.",
-    ]
-    for line in lines:
-        c.drawString(MARGIN, y, line)
-        y -= 3.8*mm
-
-    # ── Feature sections ──
-    y -= 5*mm
-
-    features = [
-        ("Daily scraping",
-         "14 RSS + HTML sources across 3 countries. Automatic fallback\n"
-         "to HTML parsing when RSS feeds are unavailable."),
-        ("2-pass ML clustering",
-         "Average-linkage TF-IDF clustering groups articles by event.\n"
-         "A strict second pass splits large clusters into sub-events."),
-        ("AI title synthesis",
-         "Groq (Llama 3) and Gemini Flash synthesise a single headline\n"
-         "from multiple source framings of the same story."),
-        ("Print-ready briefing",
-         "Overview, ranked key stories, and 'also reported' sections\n"
-         "in one self-contained HTML file — print directly from browser."),
-    ]
-
-    for title, desc in features:
-        # section label
-        c.setFillColor(NAVY)
-        c.setFont("Helvetica-Bold", 9)
-        c.drawString(MARGIN, y, title)
-        y -= 3.5*mm
-        # crimson underline
-        tw = c.stringWidth(title, "Helvetica-Bold", 9)
-        c.setStrokeColor(CRIMSON)
-        c.setLineWidth(1)
-        c.line(MARGIN, y + 1*mm, MARGIN + tw, y + 1*mm)
-        # description (two lines)
-        c.setFillColor(MID)
-        c.setFont("Helvetica", 8)
-        for dline in desc.split("\n"):
-            c.drawString(MARGIN + 2*mm, y, dline)
-            y -= 3.5*mm
-        y -= 2*mm
-
-    # ── Screenshot (right column) ──
-    ss_top  = desc_y
-    ss_h    = ss_top - FOOTER_H - 6*mm
-    _place_image(c, SCREENSHOT, RIGHT_X, ss_top, RIGHT_W, ss_h)
-
-    # ── CTA ──
-    cta_y = FOOTER_H + 14*mm
-    c.setFillColor(NAVY)
-    c.roundRect(MARGIN, cta_y, 55*mm, 8*mm, 2*mm, fill=1, stroke=0)
-    c.setFillColor(CREAM)
-    c.setFont("Helvetica-Bold", 8.5)
-    c.drawCentredString(MARGIN + 27.5*mm, cta_y + 2.8*mm, "View live dashboard")
-
-    c.setFillColor(MID)
-    c.setFont("Helvetica", 8)
-    c.drawString(MARGIN + 58*mm, cta_y + 2.8*mm, site_url)
-
-    c.setFillColor(HexColor("#AAAAAA"))
-    c.setFont("Helvetica", 7.5)
-    c.drawString(MARGIN, FOOTER_H + 5*mm, "Works on desktop and tablet \u00b7 updated daily by GitHub Actions")
-
-    # ── Footer ──
-    _footer_bar(c,
-                "Cono Sur Media Monitor",
-                "Python \u00b7 scikit-learn \u00b7 Groq API \u00b7 Gemini API \u00b7 pandas \u00b7 SQLite")
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  PAGE 2 — IN ACTION
-# ══════════════════════════════════════════════════════════════════════════════
-
-def page2(c, site_url):
-    FOOTER_H = 8 * mm
-    DATA_BAND_H = 32 * mm
-
-    # ── Header ──
-    _header_bar(c,
-                "IN ACTION",
-                "",
-                "Cono Sur Media Monitor",
-                H, 14*mm)
-
-    y = H - 14*mm - 5*mm
-
-    # ── Screenshot (large, centre) ──
-    ss_top = y
-    ss_h   = 80 * mm
-    ss_w   = W - 2*MARGIN
-    dh = _place_image(c, SCREENSHOT, MARGIN, ss_top, ss_w, ss_h)
-    y = ss_top - dh - 8*mm
-
-    # ── Two-column layout: features left, URL/note right ──
-    COL_W = (W - 2*MARGIN - 6*mm) / 2
-    LEFT_X  = MARGIN
-    RIGHT_X = MARGIN + COL_W + 6*mm
-
-    # Left — "What you can explore"
-    c.setFillColor(NAVY)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(LEFT_X, y, "What you can explore")
-    c.setStrokeColor(CRIMSON)
-    c.setLineWidth(1)
-    c.line(LEFT_X, y - 1.5*mm, LEFT_X + 50*mm, y - 1.5*mm)
-    y -= 5*mm
-
-    bullets = [
-        "Browse today's top stories ranked by source count",
-        "See how different outlets frame the same event",
-        "Filter by country: Argentina, Uruguay or Paraguay",
-        "Read the full 'Also Reported' section for each country",
-        "Print the briefing directly from your browser (Ctrl+P)",
-    ]
-    feat_y = y
     for b in bullets:
-        feat_y = _bullet(c, LEFT_X + 1*mm, feat_y, b, font_size=8.5)
+        c.drawString(M + 2 * mm, by, f"·  {b}")
+        by -= 4.8 * mm
 
-    # Right — URL + stack
+    # — Right: QR —
+    qr_size = 34 * mm
+    qr_x    = M + TXT_COL + 6 * mm
+    qr_y    = y - qr_size - 5 * mm
+    padding = 2.5 * mm
+    c.setFillColor(CREAM_DRK)
+    c.roundRect(qr_x - padding, qr_y - padding,
+                qr_size + 2 * padding, qr_size + 2 * padding + 6 * mm,
+                2 * mm, fill=1, stroke=0)
     c.setFillColor(NAVY)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(RIGHT_X, y, "Live at")
-    c.setFillColor(CRIMSON)
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(RIGHT_X + 13*mm, y, site_url)
-
+    c.setFont("Helvetica-Bold", 8)
+    lbl = "Abrí el dashboard"
+    lw  = c.stringWidth(lbl, "Helvetica-Bold", 8)
+    c.drawString(qr_x + qr_size / 2 - lw / 2, qr_y + qr_size + 2.5 * mm, lbl)
+    qr_ir = make_qr(qr_url)
+    c.drawImage(qr_ir, qr_x, qr_y, qr_size, qr_size)
     c.setFillColor(MID)
-    c.setFont("Helvetica", 8)
-    stack_y = y - 6*mm
-    stack = [
-        "Python 3 \u00b7 requests \u00b7 feedparser",
-        "scikit-learn \u00b7 scipy \u00b7 TF-IDF",
-        "Groq Llama-3 \u00b7 Gemini Flash",
-        "SQLite \u00b7 pandas \u00b7 ReportLab",
-        "GitHub Actions (daily update)",
-    ]
-    for s in stack:
-        c.drawString(RIGHT_X, stack_y, s)
-        stack_y -= 3.8*mm
+    c.setFont("Helvetica", 6)
+    uw = c.stringWidth(qr_url, "Helvetica", 6)
+    c.drawString(qr_x + qr_size / 2 - uw / 2, qr_y - 3 * mm, qr_url)
 
-    # ── DATA AT A GLANCE band ──
-    band_y = FOOTER_H + DATA_BAND_H
+    # ── DATA AT A GLANCE band ─────────────────────────────────────────────────
+    band_y = FTR_H
     c.setFillColor(NAVY)
-    c.rect(0, FOOTER_H, W, DATA_BAND_H, fill=1, stroke=0)
+    c.rect(0, band_y, W, DATA_H, fill=1, stroke=0)
 
-    # Label
     c.setFillColor(BLUE_GREY)
-    c.setFont("Helvetica-Bold", 9)
-    lw = c.stringWidth("DATA AT A GLANCE", "Helvetica-Bold", 9)
-    c.drawString((W - lw)/2, FOOTER_H + DATA_BAND_H - 6*mm, "DATA AT A GLANCE")
+    c.setFont("Helvetica-Bold", 7.5)
+    label = "DATA AT A GLANCE"
+    lw    = c.stringWidth(label, "Helvetica-Bold", 7.5)
+    c.drawString((W - lw) / 2, band_y + DATA_H - 5.5 * mm, label)
 
-    # 4 stat blocks
-    data_stats = [
-        ("14",   "news sources"),
-        ("3",    "countries\ncovered"),
-        ("500+", "articles\nper day"),
-        ("AI",   "headline\nsynthesis"),
-    ]
+    data_stats = [("14", "diarios"), ("3", "países"),
+                  ("Diario", "actualización"), ("Gratis", "acceso libre")]
     col_w = W / len(data_stats)
-    num_y = FOOTER_H + DATA_BAND_H - 16*mm
+    cy    = band_y + DATA_H / 2 - 3 * mm
+    CARD_W, CARD_H = 34 * mm, 17 * mm
     for i, (num, lbl) in enumerate(data_stats):
         cx = col_w * i + col_w / 2
-        _stat_block(c, cx, num_y, num, lbl.replace("\n", " "), num_size=26, lbl_size=8)
-
-    # Tagline
-    c.setFillColor(BLUE_GREY)
-    c.setFont("Helvetica", 7.5)
-    tagline = f"Fully automated \u00b7 open source \u00b7 {site_url}"
-    tw = c.stringWidth(tagline, "Helvetica", 7.5)
-    c.drawString((W - tw)/2, FOOTER_H + 2.5*mm, tagline)
-
-    # ── Footer ──
-    _footer_bar(c,
-                "Cono Sur Media Monitor",
-                "Data: Infobae \u00b7 La Nacion \u00b7 Clarin \u00b7 El Observador \u00b7 ABC Color + 9 more")
+        c.setFillColor(HexColor("#00253A"))   # slightly darker navy for card
+        c.roundRect(cx - CARD_W / 2, cy - CARD_H / 2, CARD_W, CARD_H,
+                    2 * mm, fill=1, stroke=0)
+        c.setFillColor(CREAM)
+        c.setFont("Helvetica-Bold", 16)
+        nw = c.stringWidth(num, "Helvetica-Bold", 16)
+        c.drawString(cx - nw / 2, cy + 1.5 * mm, num)
+        c.setFillColor(BLUE_GREY)
+        c.setFont("Helvetica", 7)
+        lw2 = c.stringWidth(lbl, "Helvetica", 7)
+        c.drawString(cx - lw2 / 2, cy - 4.5 * mm, lbl)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Entry point
+#  Build
 # ══════════════════════════════════════════════════════════════════════════════
 
-def build_ficha(site_url="github.com/YOUR-USER/media-monitos"):
-    os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
-    c = canvas.Canvas(OUTPUT, pagesize=A4)
-    c.setTitle("Cono Sur Media Monitor — Project Ficha")
+def build_ficha(site_url="auparrino.github.io/media-monitos"):
+    crops = prepare_crops()
+    crop1 = crops[0] if crops else None
+    crop2 = crops[1] if crops else None
+    crop3 = crops[2] if crops else None
+
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    c = canvas.Canvas(OUT, pagesize=A4)
+    c.setTitle("Cono Sur Media Monitor — Ficha de proyecto")
     c.setAuthor("Augusto")
 
-    page1(c, site_url)
+    page1(c, crop1)
     c.showPage()
-    page2(c, site_url)
+    page2(c, crop2, crop3, site_url)
+    c.showPage()
     c.save()
-    print(f"Ficha saved: {OUTPUT}")
+    print(f"Ficha guardada: {OUT}")
 
 
 if __name__ == "__main__":
     import sys
-    url = sys.argv[1] if len(sys.argv) > 1 else "YOUR-USER.github.io/media-monitos"
+    url = sys.argv[1] if len(sys.argv) > 1 else "auparrino.github.io/media-monitos"
     build_ficha(url)
