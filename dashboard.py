@@ -545,6 +545,10 @@ _AMBIGUOUS_SHORT_LASTNAMES = {
     "vaca", "gana", "para", "mejor", "solo", "cosa",
     "guerra", "real", "paz", "campo", "rico", "blanco",
     "fuerte", "franco", "pastor", "moral", "bueno", "leal",
+    # Geographic / geopolitical terms that collide with person surnames:
+    "israel", "washington", "costas", "lima", "roma", "santiago",
+    "jordan", "georgia", "chile", "panama", "cuba", "paris",
+    "leon", "valencia", "bolivar", "europa", "asia", "africa",
 }
 # NOTE: "negro" removed — it blocked Uruguay's Interior Minister Carlos Negro.
 # The prominence system (80+ = ministro) now handles disambiguation correctly.
@@ -654,6 +658,18 @@ def _annotate_entity(entry, mentions, basis, entity_type):
     return out
 
 
+_NON_PERSON_ROLES = re.compile(
+    r"(?:destino|ciudad|localidad|barrio|region|turistic|comercial|"
+    r"frontera|puerto|playa|cerro|balneario|departamento|provincia)",
+    re.IGNORECASE,
+)
+_NON_PERSON_NAME_PATTERNS = re.compile(
+    r"(?:^directivo|^general\b|^ciudad\b|^punta\b|^puerto\b|^monte\b|"
+    r"saneamiento|argentino[s]?$|uruguayo[s]?$|paraguayo[s]?$)",
+    re.IGNORECASE,
+)
+
+
 def _scan_titles_for_known_people(titles):
     """Return high-confidence people detected across the title corpus."""
     if not titles or not _ALL_KNOWN_PEOPLE:
@@ -664,6 +680,15 @@ def _scan_titles_for_known_people(titles):
     for entry in _ALL_KNOWN_PEOPLE:
         norm = _normalize_person_name(entry.get("name", ""))
         if not norm:
+            continue
+        # Skip entries that are clearly not people (cities, locations, orgs)
+        name_raw = entry.get("name", "")
+        role_raw = entry.get("role", "")
+        if _NON_PERSON_ROLES.search(role_raw):
+            continue
+        if _NON_PERSON_NAME_PATTERNS.search(name_raw):
+            continue
+        if not _looks_like_person_name(name_raw):
             continue
         words = norm.split()
         last_name = words[-1] if words else ""
@@ -803,12 +828,13 @@ def _llm_extract_glossary(titles):
     if not titles:
         return []
 
-    # ── Step 1: auto-seed from KNOWN_PEOPLE present in the corpus ──
+    # ── Step 1: auto-seed from KNOWN_PEOPLE present in ALL titles ──
     seed_entries = _scan_titles_for_known_people(titles)
     seed_normalized = {_normalize_person_name(e["name"]) for e in seed_entries}
 
-    # ── Step 2: LLM extraction (uses unified cascade) ──
-    bullet_list = "\n".join(f"- {t}" for t in titles)
+    # ── Step 2: LLM extraction (cap to 120 titles to keep prompt small) ──
+    llm_titles = titles[:120]
+    bullet_list = "\n".join(f"- {t}" for t in llm_titles)
     user_msg = f"Headlines:\n{bullet_list}"
     raw_text = _llm_chat_cascade(_GLOSSARY_PROMPT, user_msg, json_mode=True, max_tokens=1500)
 
@@ -850,8 +876,10 @@ def _llm_extract_glossary(titles):
             norm = _normalize_person_name(match["name"])
             if norm in seen_names:
                 continue  # already seeded
-            seen_names.add(norm)
             mentions = _count_name_mentions(match["name"], titles)
+            if mentions < 1:
+                continue  # LLM hallucinated a name not actually in the corpus
+            seen_names.add(norm)
             cleaned_llm.append(_annotate_entity(match, mentions, "full-name-llm", "person"))
             continue
 
@@ -880,9 +908,38 @@ def _llm_extract_glossary(titles):
             "entity_type": "person",
         })
 
-    # ── Step 5: merge — seeded first (highest confidence), then LLM extras ──
+    # ── Step 5: merge, dedupe, sort by prominence + mentions, cap ──
     merged = list(seed_entries) + cleaned_llm
-    return merged[:12]
+    # Sort by role prominence (presidents first), then by mention count
+    merged.sort(key=lambda e: (-_role_prominence(e), -e.get("mentions", 0)))
+    GLOSSARY_CAP = 15
+    # Ensure each Cono Sur country has at least 2 entries in the glossary
+    result = []
+    country_counts = {"argentina": 0, "uruguay": 0, "paraguay": 0}
+    used_norms = set()
+    # First pass: fill up to cap
+    for e in merged:
+        if len(result) >= GLOSSARY_CAP:
+            break
+        norm = _normalize_person_name(e.get("name", ""))
+        if norm in used_norms:
+            continue
+        used_norms.add(norm)
+        c = e.get("country", "")
+        if c in country_counts:
+            country_counts[c] += 1
+        result.append(e)
+    # Second pass: ensure each Cono Sur country has ≥2 entries
+    for e in merged:
+        norm = _normalize_person_name(e.get("name", ""))
+        if norm in used_norms:
+            continue
+        c = e.get("country", "")
+        if c in country_counts and country_counts[c] < 2:
+            used_norms.add(norm)
+            country_counts[c] += 1
+            result.append(e)
+    return result
 
 
 def _llm_chat_cascade(system_prompt, user_msg, json_mode=True, max_tokens=500):
@@ -2058,7 +2115,9 @@ def generate_dashboard():
         if deficit <= 0:
             continue
         # Find single-source clusters whose articles are from this country
-        # and are about domestic topics (not international news from local outlets)
+        # and are about domestic topics (not international news from local outlets).
+        # Uses a stricter allowlist approach: only promote if the article is
+        # clearly about Cono Sur domestic affairs.
         candidates = []
         for cl in single_source_clusters:
             if cl.get("country"):
@@ -2066,10 +2125,14 @@ def generate_dashboard():
             country_arts = [a for a in cl["articles"] if a.country == country]
             if len(country_arts) < len(cl["articles"]) * 0.8:
                 continue
-            # Skip international topics
-            if _domestic_ratio(cl) < 0.5:
+            # Skip if any article is categorized "internacional"
+            if _domestic_ratio(cl) < 1.0:
                 continue
-            # For single-article clusters, check title directly for foreign refs
+            # Skip if any article's URL contains /mundo/ /internacionales/ /world/
+            intl_url_hints = ("/mundo/", "/internacionales/", "/world/", "/exterior/")
+            if any(any(h in a.url.lower() for h in intl_url_hints) for a in cl["articles"]):
+                continue
+            # Skip if title mentions a foreign country/figure (broad blocklist)
             any_foreign = any(
                 _FOREIGN_COUNTRY_PATTERNS.search(a.title) for a in cl["articles"]
             )
@@ -2191,9 +2254,8 @@ def generate_dashboard():
             if t and t not in seen_titles:
                 seen_titles.add(t)
                 glossary_titles.append(t)
-        if len(glossary_titles) >= 120:  # cap prompt size
-            break
-    people_entries = _llm_extract_glossary(glossary_titles[:120])
+    # Auto-seed scans ALL titles (cheap); LLM prompt is capped to 120
+    people_entries = _llm_extract_glossary(glossary_titles)
     org_entries = _scan_titles_for_known_organizations(glossary_titles[:120])
     glossary_html = build_glossary_html(people_entries, org_entries)
     n_glossary = len(people_entries) + len(org_entries)
