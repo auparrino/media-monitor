@@ -372,8 +372,11 @@ _BRIEF_WITH_BODY_PROMPT = (
     "the same event, produce a JSON object with TWO fields:\n\n"
     '- "summary": ONE short paragraph IN ENGLISH (3 sentences, max 400 characters) '
     "sticking strictly to the facts: what happened, who, where, when. "
-    "Use the excerpts to add specific details (names, numbers, dates) not in the "
-    "headlines alone. "
+    "The headlines collectively define the scope and actors of this story. "
+    "Use the excerpts only to elaborate on facts already indicated by the headlines "
+    "(e.g. a number, a quote, a date) — do NOT introduce new events, locations, "
+    "or actors that appear only in the body excerpts and not in any headline. "
+    "If the excerpts describe a different story than the headlines, ignore them. "
     + _BANNED_PHRASES +
     "Do not use quotes, do not invent facts not present in the sources.\n\n"
     '- "context": ONE single sentence IN ENGLISH (max 180 characters) providing factual '
@@ -940,7 +943,35 @@ def _llm_validate_and_enrich_clusters(clusters):
 
     On any failure (LLM unavailable, parse error, etc.) returns clusters unchanged.
     """
-    candidates = [cl for cl in clusters if cl.get("multi") and not cl.get("noise")][:25]
+    eligible = [cl for cl in clusters if cl.get("multi") and not cl.get("noise")]
+
+    # Prioritise clusters that are most likely to need coherence checking:
+    # mixed-actor clusters (articles mention different capitalised names across
+    # sources) are placed first so they consume the validation budget before
+    # single-theme, single-actor clusters.
+    def _mixed_actor_score(cl):
+        """Count distinct capitalised tokens (≥5 chars) per source.  A high
+        score means different outlets are mentioning different proper names —
+        likely two events lumped together by shared topic vocabulary."""
+        per_source: dict = {}
+        for art in cl["articles"]:
+            toks = {
+                w.strip(".,;:\"'¿?¡!()").lower()
+                for w in art.title.split()
+                if len(w.strip(".,;:\"'¿?¡!()")) >= 5
+                and w.strip(".,;:\"'¿?¡!()")[0].isupper()
+            }
+            per_source.setdefault(art.source, set()).update(toks)
+        if len(per_source) < 2:
+            return 0
+        source_token_sets = list(per_source.values())
+        union = set().union(*source_token_sets)
+        intersection = source_token_sets[0].intersection(*source_token_sets[1:])
+        unique_to_any = union - intersection
+        return len(unique_to_any)
+
+    eligible.sort(key=_mixed_actor_score, reverse=True)
+    candidates = eligible[:25]
     if not candidates:
         return clusters
 
@@ -950,6 +981,7 @@ def _llm_validate_and_enrich_clusters(clusters):
     for idx, cl in enumerate(candidates):
         id_to_cluster[idx] = cl
         cl["_validate_id"] = idx
+        cl["_llm_validated"] = True  # mark so Step 1b knows this cluster was seen
         titles_block = "\n".join(
             f'  - "{art.title}"' for art in cl["articles"][:6]
         )
@@ -1164,11 +1196,30 @@ def _llm_extract_glossary(titles, clusters=None):
     # Entries matched only by last-name, first-name, or single-alias carry real
     # false-positive risk: a common word like "carrera" (race/career) can match a
     # roster surname.  If the LLM validation ran (llm_entries non-empty), keep
-    # those weak matches only when the LLM also confirmed the person in some cluster.
+    # those weak matches only when:
+    #   (a) the LLM confirmed the person in some validated cluster, OR
+    #   (b) the person appears exclusively in clusters that were NOT seen by the
+    #       LLM (single-source splits, clusters beyond the cap) — absence of LLM
+    #       confirmation is not evidence of false-positive for unseen clusters.
     # Full-name and multi-alias matches are considered reliable and always kept.
     _WEAK_BASES = {"last-name", "first-name", "single-alias"}
-    if llm_entries:
+    if llm_entries and clusters is not None:
         confirmed_names = {_normalize_person_name(e["name"]) for e in llm_entries}
+
+        # Collect all title text from clusters that were NOT LLM-validated
+        # so we can give weak-match people in those clusters a free pass.
+        unvalidated_titles = [
+            a.title
+            for cl in clusters
+            if not cl.get("_llm_validated")
+            for a in cl["articles"]
+        ]
+        if unvalidated_titles:
+            unvalidated_people = _scan_titles_for_known_people(unvalidated_titles)
+            confirmed_names.update(
+                _normalize_person_name(e["name"]) for e in unvalidated_people
+            )
+
         seed_entries = [
             e for e in seed_entries
             if (e.get("match_basis") not in _WEAK_BASES
