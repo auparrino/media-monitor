@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Media Monitor &mdash; Argentina, Paraguay &amp; Uruguay &mdash; 2026-04-12 08:09</title>
+<title>Media Monitor &mdash; Argentina, Paraguay &amp; Uruguay &mdash; 2026-04-12 09:53</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -239,6 +239,23 @@ body {
     letter-spacing: 0.5px;
     margin-top: 1px;
 }
+.gloss-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+}
+.meta-pill {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 9999px;
+    background: rgba(0,48,73,0.06);
+    color: rgba(0,48,73,0.72);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
 .gloss-bio {
     font-size: 11px;
     color: rgba(0,48,73,0.78);
@@ -378,6 +395,21 @@ body {
     vertical-align: middle;
     border: 1px solid rgba(0,48,73,0.15);
 }
+.sub-badge {
+    display: inline-block;
+    box-sizing: border-box;
+    padding: 2px 8px;
+    border-radius: 9999px;
+    background: rgba(0,48,73,0.08);
+    color: rgba(0,48,73,0.78);
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+    vertical-align: middle;
+    border: 1px solid rgba(0,48,73,0.12);
+}
 
 /* ── Coverage Dots ── */
 .coverage-dots {
@@ -514,6 +546,9 @@ a:hover { text-decoration: underline; }
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
+    /* Show all tabs when printing */
+    .tab-nav { display: none; }
+    .tab-panel { display: block !important; page-break-before: auto; }
     @page { margin: 1cm; size: A4 portrait; }
 }
 </style>
@@ -527,223 +562,63 @@ a:hover { text-decoration: underline; }
             <div class="lh-title">MEDIA MONITOR — Argentina, Paraguay &amp; Uruguay</div>
             <div class="lh-sub"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina &middot; <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay &middot; <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
         </div>
-        <div class="lh-date">12 April 2026, 08:09</div>
+        <div class="lh-date">12 April 2026, 09:53</div>
     </div>
 </div>
 
 <div class="content">
 
     <nav class="tab-nav" role="tablist">
-        <button class="tab-btn active" data-tab="tab-ar" role="tab"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina <span class="tab-count">10</span></button>
-        <button class="tab-btn" data-tab="tab-uy" role="tab"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay <span class="tab-count">10</span></button>
-        <button class="tab-btn" data-tab="tab-py" role="tab"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay <span class="tab-count">10</span></button>
-        <button class="tab-btn" data-tab="tab-regional" role="tab">Regional <span class="tab-count">2</span></button>
-        <button class="tab-btn" data-tab="tab-glossary" role="tab">Quién es Quién <span class="tab-count">6</span></button>
+        <button class="tab-btn active" data-tab="tab-ar" role="tab"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina <span class="tab-count">9</span></button>
+        <button class="tab-btn" data-tab="tab-uy" role="tab"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay <span class="tab-count">1</span></button>
+        <button class="tab-btn" data-tab="tab-py" role="tab"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay <span class="tab-count">2</span></button>
+        <button class="tab-btn" data-tab="tab-regional" role="tab">Regional <span class="tab-count">0</span></button>
+        <button class="tab-btn" data-tab="tab-intl" role="tab">🌍 Internacional <span class="tab-count">10</span></button>
+        <button class="tab-btn" data-tab="tab-glossary" role="tab">Actores Clave <span class="tab-count">14</span></button>
     </nav>
 
     <section id="tab-ar" class="tab-panel active" role="tabpanel">
         
         <div class="top-story-line">
             <span class="ts-label">Today's top story · <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</span>
-            <div class="ts-title">Guiño para el Gobierno: el juez que suspendió la reforma laboral perdió la causa y otro fuero...</div>
+            <div class="ts-title">Milei habla ante líderes empresariales EE.UU. en Buenos Aires</div>
         </div>
 
-        <div class="sec-head">Key Stories &mdash; Argentina (10)</div>
+        <div class="sec-head">Key Stories &mdash; Argentina (9)</div>
         <p class="sec-desc">Multi-source stories where Argentina's press is the dominant voice. Each card shows how different newsrooms framed the same event.</p>
         <div class="stories-grid">
     <div class="story">
         <div class="story-header">
             <span class="story-num">1</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
-            <span class="story-sources">5 sources <span class="coverage-dots"><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span></span></span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span> <span class="sub-badge">Ejecutivo</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-sources">3 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
         </div>
-        <div class="story-title">Guiño para el Gobierno: el juez que suspendió la reforma laboral perdió la causa y otro fuero...</div>
-        <div class="story-summary">A federal judge, Macarena Marra Giménez, ruled in favor of the government, allowing a federal court to handle a lawsuit against the labor reform law. The lawsuit was initially filed by the Confederación General del Trabajo (CGT). The labor reform law, which was suspended by a lower court, affects 82 articles of the law.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The labor reform law has been a central point of contention in Argentina, with various groups and unions challenging its constitutionality.</div>
+        <div class="story-title">Milei habla ante líderes empresariales EE.UU. en Buenos Aires</div>
+        <div class="story-summary">Argentine President Javier Milei will address U.S. business leaders at the AmCham Summit in Buenos Aires on April 14, 2025, ahead of a trip to Israel for Independence Day celebrations. The event, held at the Buenos Aires Convention Center, marks Milei’s second appearance at the AmCham Summit, following his 2025 participation. The president’s recent statements and social media activity have sparked renewed political debate.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Milei’s administration has implemented sweeping fiscal adjustments since assuming office in December 2023, including subsidy cuts and deregulation measures.</div>
         <div class="story-body">
             <div class="story-variant">
-                <span class="sv-source">La Nacion</span>
-                <a class="sv-title" href="https://www.lanacion.com.ar/politica/el-juez-que-suspendio-la-reforma-laboral-perdio-la-causa-y-otro-fuero-definira-la-apelacion-nid10042026/" target="_blank">El juez que suspendió la reforma laboral perdió la causa y otro fuero definirá la apelación</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Pagina 12</span>
-                <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/11/reforma-laboral-un-conflicto-de-competencia-que-puede-favorecer-al-gobierno/" target="_blank">Reforma laboral: Un conflicto de competencia que puede favorecer al gobierno</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Infobae</span>
-                <a class="sv-title" href="https://www.infobae.com/politica/2026/04/10/guino-para-el-gobierno-el-juez-que-suspendio-la-reforma-laboral-perdio-la-causa-y-otro-fuero-definira-la-apelacion/" target="_blank">Guiño para el Gobierno: el juez que suspendió la reforma laboral perdió la causa y otro fuero definirá la apelación</a>
+                <span class="sv-source">Clarin</span>
+                <a class="sv-title" href="https://www.clarin.com/politica/javier-milei-medidas-vivo-viaje-israel-presidente-hablara-amcham-frente-empresarios-eeuu_0_4tbDzCQ5Eg.html" target="_blank">Javier Milei y sus medidas, en VIVO: antes de su viaje a Israel, el Presidente hablará en AmCham frente a empresarios de EE.UU.</a>
             </div>
             <div class="story-variant">
                 <span class="sv-source">El Destape</span>
-                <a class="sv-title" href="https://www.eldestapeweb.com/economia/encuestas/encuesta-entre-empresarios-con-la-reforma-laboral-vigente-se-preparan-para-contratar-o-despedir-trabajadores-2026411104839" target="_blank">Reforma laboral: las empresas se preparan, ¿para contratar o despedir?</a>
+                <a class="sv-title" href="https://www.eldestapeweb.com/politica/javier-milei-presidente/antes-de-viajar-a-israel-milei-hablara-en-amcham-202641194751" target="_blank">Antes de viajar a Israel, Milei hablará en AmCham</a>
             </div>
             <div class="story-variant">
                 <span class="sv-source">Ambito</span>
-                <a class="sv-title" href="https://www.ambito.com/politica/reves-la-cgt-la-justicia-habilito-un-fuero-cuestionado-la-central-obrera-tratar-la-reforma-laboral-n6265383" target="_blank">Revés para la CGT: la Justicia habilitó a un fuero cuestionado por la central obrera para tratar la reforma laboral</a>
+                <a class="sv-title" href="https://www.ambito.com/opiniones/el-ajuste-javier-milei-es-una-serpiente-que-se-muerde-la-cola-n6265455" target="_blank">El ajuste de Javier Milei es una serpiente que se muerde la cola</a>
             </div></div>
     </div>
     <div class="story">
         <div class="story-header">
             <span class="story-num">2</span>
             <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
-            <span class="story-sources">4 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
-        </div>
-        <div class="story-title">Javier Milei y todas sus medidas</div>
-        <div class="story-summary">President Javier Milei is scheduled to speak at AmCham on April 14 in Buenos Aires before his trip to Israel to participate in the country's Independence Day celebrations. He may also attend a July 4 event in the US organized by Donald Trump. The trip comes as the government faces internal challenges and criticism.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The government has been focused on recovering control of the agenda amidst internal challenges and criticism.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">Infobae</span>
-                <a class="sv-title" href="https://www.infobae.com/politica/2026/04/12/el-trimestre-clave-que-mira-javier-milei-para-la-economia-y-las-amenazas-internas-en-el-gobierno/" target="_blank">El trimestre clave que mira Javier Milei para la economía y las amenazas internas en el Gobierno</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Clarin</span>
-                <a class="sv-title" href="https://www.clarin.com/politica/javier-milei-medidas-vivo-viaje-israel-presidente-hablara-amcham-frente-empresarios-eeuu_0_4tbDzCQ5Eg.html" target="_blank">Javier Milei y sus medidas, en VIVO: antes de su viaje a Israel, el Presidente hablará en AmCham frente a empresarios de EE.UU.</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">La Nacion</span>
-                <a class="sv-title" href="https://www.lanacion.com.ar/politica/javier-milei-en-vivo-las-ultimas-medidas-del-gobierno-nid10042026/" target="_blank">Javier Milei, en vivo: las últimas medidas del Gobierno</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Destape</span>
-                <a class="sv-title" href="https://www.eldestapeweb.com/tag/javier-milei-presidente" target="_blank">Javier Milei presidente</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">3</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
-            <span class="story-sources">3 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
-        </div>
-        <div class="story-title">El Banco Central hace compras récord, pero no desactiva la tensión por el dólar</div>
-        <div class="story-summary">The Argentine Central Bank (BCRA) relaxed currency restrictions through Communication 'A' 8417, affecting foreign consumer spending, foreign exchange liquidation, and corporate financial obligations. The BCRA purchased a record $457 million in foreign currency on Friday, the best quarter for foreign currency purchases since 2003, except for 2024. The purchases are part of a favorable market context.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>Argentina's Central Bank has been managing a currency control policy since 2023.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">Clarin</span>
-                <a class="sv-title" href="https://www.clarin.com/economia/ano-desarme-cepo-compras-record-ahorristas-creen-banco-central-chance-liberarlo-completo_0_xpdUsIxF2e.html" target="_blank">Un año de desarme del cepo: tras las compras récord de ahorristas, creen que el Banco Central tiene una chance para liberarlo por completo</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Pagina 12</span>
-                <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/10/el-banco-central-flexibilizo-restricciones-al-dolar-para-personas-y-empresas/" target="_blank">El Banco Central flexibilizó restricciones al dólar para personas y empresas</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Destape</span>
-                <a class="sv-title" href="https://www.eldestapeweb.com/economia/dolar/el-banco-central-hace-compras-record-pero-no-desactiva-la-tension-por-el-dolar-2026410204814" target="_blank">El Banco Central hace compras récord, pero no desactiva la tensión por el dólar</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">4</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#1a6fa3;color:white">INTL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">4 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
-        </div>
-        <div class="story-title">Elecciones en Perú: quiénes son los candidatos a presidente</div>
-        <div class="story-summary">Peru will hold presidential elections on Sunday, April 12, with over 30 candidates running for the position. The elections come after the ousting of former President José Jerí, who was in office for a short period from October 10, 2025, to February 17. Peruvian citizens living in Argentina can vote in the elections.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>Peru has experienced years of political instability, with multiple presidents being ousted in recent years.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">La Nacion</span>
-                <a class="sv-title" href="https://www.lanacion.com.ar/el-mundo/elecciones-peru-2026-que-se-vota-quienes-son-los-candidatos-y-como-funciona-el-sistema-electoral-nid11042026/" target="_blank">Elecciones Perú 2026: qué se vota, quiénes son los candidatos y cómo funciona el sistema electoral</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Ambito</span>
-                <a class="sv-title" href="https://www.ambito.com/mundo/elecciones-peru-cifra-record-candidatos-definir-presidente-anos-inestabilidad-politica-n6265618" target="_blank">Elecciones en Perú: cifra récord de candidatos para definir presidente, tras años de inestabilidad política</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Destape</span>
-                <a class="sv-title" href="https://www.eldestapeweb.com/internacionales/peru/elecciones-en-peru-quienes-son-los-candidatos-a-presidente-202641114040" target="_blank">Elecciones en Perú: quiénes son los candidatos a presidente</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Pais UY</span>
-                <a class="sv-title" href="https://www.elpais.com.uy/mundo/los-peruanos-deberan-elegir-presidente-entre-35-candidatos-en-las-elecciones-generales-del-domingo" target="_blank">Los peruanos deberán elegir presidente entre 35 candidatos en las elecciones generales del domingo</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">5</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
             <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
         </div>
-        <div class="story-title">Bullrich sube en la carrera por la gobernación de la Ciudad</div>
-        <div class="story-summary">Patricia Bullrich's stock rose in Buenos Aires after Manuel Adorni's scandal, with Karina Milei re-embracing her. Bullrich had expressed discontent with Milei's allies diluting her influence and obstructing her candidacy for Buenos Aires mayor. The scandal led to a change in attitude, with Bullrich's team saying tensions eased.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The Buenos Aires mayoral candidacy has been a point of contention within the government since last year.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">La Nacion</span>
-                <a class="sv-title" href="https://www.lanacion.com.ar/politica/con-adorni-desgastado-suben-las-acciones-de-bullrich-en-la-capital-nid12042026/" target="_blank">Con Adorni desgastado, suben las acciones de Bullrich en la Capital</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Destape</span>
-                <a class="sv-title" href="https://www.eldestapeweb.com/politica/patricia-bullrich/ni-defensa-ni-ataque-el-equilibrio-de-bullrich-ante-el-karma-de-adorni-2026411151230" target="_blank">Ni defensa ni ataque: Bullrich, el factor Adorni y el karma de las operaciones</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">6</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">La Cámara de Diputados perfila un nuevo escenario político ante el calendario electoral de 2027</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">Infobae</span>
-                <a class="sv-title" href="https://www.infobae.com/politica/2026/04/12/la-camara-de-diputados-perfila-un-nuevo-escenario-politico-de-cara-al-calendario-electoral-de-2027/" target="_blank">La Cámara de Diputados perfila un nuevo escenario político de cara al calendario electoral de 2027</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">La Nacion</span>
-                <a class="sv-title" href="https://www.lanacion.com.ar/economia/la-resaca-economica-del-riesgo-politico-electoral-nid11042026/" target="_blank">La resaca económica del riesgo político electoral</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">7</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Dólar quieto, inflación en alza: economistas alertan sobre riesgo de tipo de cambio</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">Infobae</span>
-                <a class="sv-title" href="https://www.infobae.com/economia/2026/04/12/dolar-quieto-inflacion-en-alza-los-dolares-del-campo-acentuan-el-freno-sobre-el-tipo-de-cambio/" target="_blank">Dólar quieto, inflación en alza: los dólares del campo acentúan el freno sobre el tipo de cambio</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Ambito</span>
-                <a class="sv-title" href="https://www.ambito.com/economia/dura-advertencia-del-economista-camilo-tiscornia-no-es-sostenible-que-la-inflacion-le-gane-al-tipo-cambio-n6265603" target="_blank">Dura advertencia del economista Camilo Tiscornia: "No es sostenible que la inflación le gane al tipo de cambio"</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">8</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">El BCRA supera la meta de compra de dólares para 2026</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">La Nacion</span>
-                <a class="sv-title" href="https://www.lanacion.com.ar/economia/carry-trade-con-tasas-negativas-mientras-el-bcra-compra-dolares-nid12042026/" target="_blank">Carry trade con tasas negativas mientras el BCRA compra dólares</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Infobae</span>
-                <a class="sv-title" href="https://www.infobae.com/economia/2026/04/11/el-bcra-acelero-la-compra-de-dolares-y-supero-el-50-de-la-meta-para-todo-2026-que-se-espera-para-los-proximos-meses/" target="_blank">El BCRA aceleró la compra de dólares y superó el 50% de la meta para todo 2026: qué se espera para los próximos meses</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">9</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">La oposición se entusiasma con la posible interpelación de Adorni</div>
-        
-        
+        <div class="story-title">Oposición impulsa interpelación a vocero Adorni</div>
+        <div class="story-summary">The opposition expressed enthusiasm over the potential interpellation of government spokesperson Manuel Adorni. Officials reacted with alarm to the opposition&#x27;s growing support for the interpellation. The move follows political tensions in Argentina&#x27;s Congress.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Interpellations are a parliamentary mechanism used in Argentina to request explanations from government officials on policy or actions.</div>
         <div class="story-body">
             <div class="story-variant">
                 <span class="sv-source">Pagina 12</span>
@@ -756,22 +631,135 @@ a:hover { text-decoration: underline; }
     </div>
     <div class="story">
         <div class="story-header">
-            <span class="story-num">10</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-num">3</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
             <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
         </div>
-        <div class="story-title">El gobierno busca modificar la ley sancionada en 2010 y enviará su proyecto al Congreso La...</div>
-        
-        
+        <div class="story-title">D&#x27;Agostino renuncia tras acusaciones de violencia de género</div>
+        <div class="story-summary">Marcelo D’Agostino resigned as Mendoza’s Justice Undersecretary on Friday after his ex-partner accused him of sexual abuse, injuries, threats, and gender-based violence. The resignation followed the filing of criminal charges in court by the complainant, a journalist and academic. D’Agostino denied all allegations, stating he stepped down to avoid hindering the investigation.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>D’Agostino served as a key judicial liaison for Governor Alfredo Cornejo’s administration over the past decade.</div>
+        <div class="story-body">
+            <div class="story-variant">
+                <span class="sv-source">La Nacion</span>
+                <a class="sv-title" href="https://www.lanacion.com.ar/politica/por-denuncias-de-su-expareja-renuncio-el-subsecretario-de-justicia-del-gobernador-alfredo-cornejo-nid11042026/" target="_blank">Por denuncias de su expareja, renunció el subsecretario de Justicia del gobernador Alfredo Cornejo</a>
+            </div>
+            <div class="story-variant">
+                <span class="sv-source">Clarin</span>
+                <a class="sv-title" href="https://www.clarin.com/politica/renuncio-subsecretario-justicia-mendoza-acusado-abuso-sexual-lesiones-amenazas_0_npQfSPtKa0.html" target="_blank">Renunció el subsecretario de Justicia de Mendoza acusado por abuso sexual, lesiones y amenazas</a>
+            </div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">4</span>
+            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="sub-badge">Macro</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Banco Central de Argentina supera 50% meta de reservas para 2026</div>
+        <div class="story-summary">Argentina&#x27;s central bank accelerated dollar purchases, surpassing 50% of its 2026 target. The move aims to strengthen reserves amid ongoing economic challenges. The central bank has been actively intervening in foreign exchange markets.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>The Central Bank of Argentina (BCRA) has been rebuilding foreign reserves since mid-2023 following a severe depletion during the previous administration.</div>
+        <div class="story-body">
+            <div class="story-variant">
+                <span class="sv-source">Infobae</span>
+                <a class="sv-title" href="https://www.infobae.com/economia/2026/04/11/el-bcra-acelero-la-compra-de-dolares-y-supero-el-50-de-la-meta-para-todo-2026-que-se-espera-para-los-proximos-meses/" target="_blank">El BCRA aceleró la compra de dólares y superó el 50% de la meta para todo 2026: qué se espera para los próximos meses</a>
+            </div>
+            <div class="story-variant">
+                <span class="sv-source">La Nacion</span>
+                <a class="sv-title" href="https://www.lanacion.com.ar/economia/carry-trade-con-tasas-negativas-mientras-el-bcra-compra-dolares-nid12042026/" target="_blank">Opinión. Carry trade con tasas negativas mientras el BCRA compra dólares</a>
+            </div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">5</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span> <span class="sub-badge">Ejecutivo</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Bianco acusa al gobierno nacional por crisis del transporte en Buenos Aires</div>
+        <div class="story-summary">Buenos Aires Province Government Minister Carlos Bianco criticized national policies for worsening the public transport crisis, citing the elimination of subsidies and fuel price hikes. Bianco stated the national government previously covered 50% of transport costs, but withdrew its share, leaving the province to pay its 50% while debt reached $90.7 billion. Over 100 bus lines in Buenos Aires are affected by the financial strain.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Argentina&#x27;s national government has been adjusting fuel subsidies and transport funding since 2023, shifting costs to provincial governments.</div>
         <div class="story-body">
             <div class="story-variant">
                 <span class="sv-source">Ambito</span>
-                <a class="sv-title" href="https://www.ambito.com/politica/recorte-servicios-el-congreso-alerta-ajuste-salud-y-transporte-n6265645" target="_blank">Recorte de servicios: el Congreso alerta por ajuste en salud y transporte</a>
+                <a class="sv-title" href="https://www.ambito.com/politica/carlos-bianco-reclamo-la-crisis-del-transporte-que-el-gobierno-pague-los-subsidios-o-fije-un-combustible-accesible-n6265588" target="_blank">Carlos Bianco reclamó por la crisis del transporte: &quot;Que el Gobierno pague los subsidios o fije un combustible accesible&quot;</a>
             </div>
             <div class="story-variant">
-                <span class="sv-source">Pagina 12</span>
-                <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/11/la-salud-mental-otra-vez-en-el-centro-del-debate/" target="_blank">El gobierno busca modificar la ley sancionada en 2010 y enviará su proyecto al Congreso
-La salud mental, otra vez en el centro del debate</a>
+                <span class="sv-source">Infobae</span>
+                <a class="sv-title" href="https://www.infobae.com/politica/2026/04/11/carlos-bianco-que-el-gobierno-pague-los-subsidios-al-transporte-o-fije-un-precio-del-combustible-que-puedan-afrontar-las-empresas/" target="_blank">Carlos Bianco: “Que el Gobierno pague los subsidios al transporte o fije un precio del combustible que puedan afrontar las empresas”</a>
+            </div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">6</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span> <span class="sub-badge">Ejecutivo</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Gobierno argentino acuerda pagar fondos por default de 2001</div>
+        <div class="story-summary">The Argentine government will submit a congressional agreement to pay foreign funds that had been litigating over the 2001 debt default. The deal aims to resolve longstanding legal disputes stemming from the sovereign default. The announcement comes amid ongoing efforts to restructure Argentina’s debt obligations.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Argentina has faced legal battles with holdout creditors since its 2001 sovereign debt default, which led to prolonged restructuring negotiations.</div>
+        <div class="story-body">
+            <div class="story-variant">
+                <span class="sv-source">Infobae</span>
+                <a class="sv-title" href="https://www.infobae.com/economia/2026/04/11/esquirlas-del-default-de-deuda-de-2001-el-gobierno-enviara-al-congreso-un-acuerdo-para-pagar-a-fondos-extranjeros/" target="_blank">Esquirlas del default de deuda de 2001: el gobierno enviará al Congreso un acuerdo para pagar a fondos extranjeros</a>
+            </div>
+            <div class="story-variant">
+                <span class="sv-source">Clarin</span>
+                <a class="sv-title" href="https://www.clarin.com/economia/milei-mandara-congreso-acuerdo-pagarles-fondos-buitre-seguian-litigando-default-2001_0_D5NM2biQEM.html" target="_blank">Milei enviará al Congreso un acuerdo para pagarles a fondos buitre que seguían litigando por el default de 2001</a>
+            </div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">7</span>
+            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="sub-badge">Macro</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Banco Central de Argentina compra récord de dólares y persiste presión cambiaria</div>
+        <div class="story-summary">The Central Bank of Argentina made record purchases of U.S. dollars, but the exchange rate remains under pressure despite efforts to reduce restrictions. Savers increased their purchases of foreign currency, raising expectations about the potential full removal of currency controls. The move comes one year after the easing of restrictions began.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Currency controls (known as &#x27;cepo cambiario&#x27;) were imposed in 2011 and have been gradually relaxed since December 2023 as part of economic stabilization efforts.</div>
+        <div class="story-body">
+            <div class="story-variant">
+                <span class="sv-source">Clarin</span>
+                <a class="sv-title" href="https://www.clarin.com/economia/ano-desarme-cepo-compras-record-ahorristas-creen-banco-central-chance-liberarlo-completo_0_xpdUsIxF2e.html" target="_blank">Un año de desarme del cepo: tras las compras récord de ahorristas, creen que el Banco Central tiene una chance para liberarlo por completo</a>
+            </div>
+            <div class="story-variant">
+                <span class="sv-source">El Destape</span>
+                <a class="sv-title" href="https://www.eldestapeweb.com/economia/dolar/el-banco-central-hace-compras-record-pero-no-desactiva-la-tension-por-el-dolar-2026410204814" target="_blank">El Banco Central hace compras récord, pero no desactiva la tensión por el dólar</a>
+            </div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">8</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Milei negocia con gobernadores apoyo a reformas clave</div>
+        <div class="story-summary">Argentine President Javier Milei met with governors this week to secure support for his reform agenda, including sending funds to provinces through various mechanisms. Despite efforts, social tensions persist with open wage negotiations and concerns among mayors and business sectors. Milei&#x27;s government advanced a Glaciers Law reform in the Chamber of Deputies with backing from governors of Tucumán, Catamarca, Salta, Jujuy, and San Juan.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Milei&#x27;s administration has prioritized fiscal adjustment and structural reforms since taking office in December 2023, amid economic crisis and provincial fiscal dependencies.</div>
+        <div class="story-body">
+            <div class="story-variant">
+                <span class="sv-source">Infobae</span>
+                <a class="sv-title" href="https://www.infobae.com/politica/2026/04/11/javier-milei-promete-fotos-con-los-gobernadores-para-contener-el-drama-de-las-provincias/" target="_blank">Javier Milei promete fotos con los gobernadores para contener el drama de las provincias</a>
+            </div>
+            <div class="story-variant">
+                <span class="sv-source">Ambito</span>
+                <a class="sv-title" href="https://www.ambito.com/ambito-nacional/los-gobernadores-blindan-las-reformas-javier-milei-pero-crece-la-preocupacion-el-deterioro-las-provincias-n6265272" target="_blank">Los gobernadores blindan las reformas de Javier Milei pero crece la preocupación por el deterioro en las provincias</a>
+            </div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">9</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Hijo de diputado amenaza con arma en escuela de Argentina</div>
+        <div class="story-summary">A deputy&#x27;s son allegedly threatened to bring a gun to school and harm classmates. The incident occurred in Argentina, with reports emerging on September 12, 2024. Authorities are investigating the claims.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>The case involves a minor linked to a public figure, amid ongoing debates in Argentina about school safety and firearm regulations.</div>
+        <div class="story-body">
+            <div class="story-variant">
+                <span class="sv-source">El Destape</span>
+                <a class="sv-title" href="https://www.eldestapeweb.com/politica/la-libertad-avanza/denuncian-que-el-hijo-de-lorena-villaverde-amenazo-con-un-arma-a-sus-companeros-de-colegio-2026410211932" target="_blank">Denuncian que el hijo de Lorena Villaverde amenazó con un arma a sus compañeros</a>
+            </div>
+            <div class="story-variant">
+                <span class="sv-source">Ambito</span>
+                <a class="sv-title" href="https://www.ambito.com/politica/denuncian-que-el-hijo-una-diputada-lla-amenazo-llevar-un-arma-la-escuela-y-matar-sus-companeros-n6265407" target="_blank">Denuncian que el hijo de una diputada de LLA amenazó con llevar un arma a la escuela y matar a sus compañeros</a>
             </div></div>
     </div></div>
 
@@ -782,64 +770,64 @@ La salud mental, otra vez en el centro del debate</a>
         <div class="also-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina &mdash; Also Reported</div>
         
         <div class="also-item">
-            <span class="also-date">09/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">Ambito</span>
-            <a class="also-title" href="https://www.ambito.com/politica/el-consorcio-medios-se-retracto-acusar-ambito-no-constatamos-que-haya-recibido-dinero-rusia-n6265000" target="_blank">El consorcio de medios se retractó de acusar a Ámbito: "No constatamos que haya recibido dinero de Rusia"</a>
+            <span class="also-date">12/04</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">Clarin</span>
+            <a class="also-title" href="https://www.clarin.com/politica/riesgos-gabinete-festeja-empieza-exigirles-cambios-hermanos-milei_0_yLPukWtGyp.html" target="_blank">Los riesgos de un Gabinete que ya no festeja y empieza a exigirles cambios a los hermanos Milei</a>
         </div>
         <div class="also-item">
-            <span class="also-date">09/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
+            <span class="also-date">12/04</span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
+            <span class="also-source">Ambito</span>
+            <a class="also-title" href="https://www.ambito.com/mundo/los-motivos-del-rechazo-iran-al-acuerdo-medio-oriente-eeuu-no-logro-ganarse-la-confianza-n6265675" target="_blank">Los motivos del rechazo de Irán al acuerdo en Medio Oriente: &quot;EEUU no logró ganarse la confianza&quot;</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date">12/04</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
             <span class="also-source">Pagina 12</span>
-            <a class="also-title" href="https://www.pagina12.com.ar/2026/04/09/se-desploma-el-precio-del-barril-de-petroleo-por-que-no-baja-la-nafta-en-argentina/" target="_blank">Se desploma el precio del barril de petróleo: ¿por qué no baja la nafta en Argentina?</a>
+            <a class="also-title" href="https://www.pagina12.com.ar/2026/04/11/la-noche-que-milei-canto-rock-al-ritmo-de-las-coimas-en-la-andis/" target="_blank">La noche que Milei cantó rock al ritmo de las coimas en la Andis</a>
         </div>
         <div class="also-item">
             <span class="also-date">12/04</span>
             <span class="badge" style="background:#7d3c98;color:white">POL</span>
             <span class="also-source">La Nacion</span>
-            <a class="also-title" href="https://www.lanacion.com.ar/politica/el-laberinto-de-los-sub-30-entre-milei-y-el-desencanto-democratico-nid11042026/" target="_blank">El laberinto de los sub-30, entre Milei y el desencanto democrático</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date">12/04</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>
-            <span class="also-source">Infobae</span>
-            <a class="also-title" href="https://www.infobae.com/politica/2026/04/12/el-senado-define-el-reparto-de-las-bicamerales-y-se-activa-una-feroz-pelea-entre-lla-y-el-kirchnerismo/" target="_blank">El Senado define el reparto de las Bicamerales y se activa una feroz pelea entre LLA y el kirchnerismo</a>
+            <a class="also-title" href="https://www.lanacion.com.ar/politica/por-denuncias-de-su-expareja-renuncio-el-subsecretario-de-justicia-del-gobernador-alfredo-cornejo-nid11042026/" target="_blank">Por denuncias de su expareja, renunció el subsecretario de Justicia del gobernador Alfredo Cornejo</a>
         </div>
         <div class="also-item">
             <span class="also-date">11/04</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>
-            <span class="also-source">Clarin</span>
-            <a class="also-title" href="https://www.clarin.com/politica/insolita-pelea-empleado-diplomatico-embajador-argentino-madrid_0_Zv34vgECy3.html" target="_blank">Insólita pelea entre un empleado diplomático y el embajador argentino en Madrid</a>
+            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
+            <span class="also-source">Infobae</span>
+            <a class="also-title" href="https://www.infobae.com/economia/2026/04/11/el-bcra-acelero-la-compra-de-dolares-y-supero-el-50-de-la-meta-para-todo-2026-que-se-espera-para-los-proximos-meses/" target="_blank">El BCRA aceleró la compra de dólares y superó el 50% de la meta para todo 2026: qué se espera para los próximos meses</a>
         </div>
         <div class="also-item">
             <span class="also-date"></span>
             <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
             <span class="also-source">El Destape</span>
-            <a class="also-title" href="https://www.eldestapeweb.com/atr/tendencias/6-ideas-inteligentes-para-dividir-un-monoambiente-sin-hacer-obras-2026411201844" target="_blank">6 ideas inteligentes para dividir un monoambiente sin hacer obras</a>
+            <a class="also-title" href="https://www.eldestapeweb.com/internacionales/costarica/costa-rica-recibe-primer-grupo-de-migrantes-deportados-por-estados-unidos-dentro-de-acuerdo-202641120230" target="_blank">Costa Rica recibe primer grupo de migrantes deportados por Estados Unidos dentro de acuerdo</a>
         </div>
         <div class="also-item">
             <span class="also-date">12/04</span>
             <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
+            <span class="also-source">Clarin</span>
+            <a class="also-title" href="https://www.clarin.com/economia/nueva-arquitectura-dinero-argentina-digitalizacion-desafios-regulatorios_0_WRChbyc9Dx.html" target="_blank">La nueva arquitectura del dinero en Argentina: entre la digitalización y los desafíos regulatorios</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date">12/04</span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
             <span class="also-source">Ambito</span>
-            <a class="also-title" href="https://www.ambito.com/politica/el-costo-politico-del-adornigate-encuestas-desgaste-y-la-ensalada-rusa-n6265637" target="_blank">El costo político del Adornigate: entre encuestas, desgaste y la ensalada rusa</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date">09/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">Pagina 12</span>
-            <a class="also-title" href="https://www.pagina12.com.ar/2026/04/08/mercados-y-petroleo-al-compas-del-conflicto/" target="_blank">Mercados y petróleo al compás del conflicto</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date">12/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">La Nacion</span>
-            <a class="also-title" href="https://www.lanacion.com.ar/economia/el-futuro-del-dolar-los-proximos-pasos-que-evalua-el-gobierno-para-eliminar-el-cepo-nid12042026/" target="_blank">El futuro del dólar: los próximos pasos que evalúa el Gobierno para eliminar el cepo</a>
+            <a class="also-title" href="https://www.ambito.com/mundo/eeuu-anuncio-que-las-negociaciones-iran-fracasaron-y-retiro-su-comitiva-pakistan-n6265671" target="_blank">EEUU anunció que las negociaciones con Irán fracasaron y retiró a su comitiva de Pakistán</a>
         </div>
         <div class="also-item">
             <span class="also-date">12/04</span>
             <span class="badge" style="background:#7d3c98;color:white">POL</span>
-            <span class="also-source">Infobae</span>
-            <a class="also-title" href="https://www.infobae.com/politica/2026/04/12/luciano-laspina-argentina-necesita-acuerdos-basicos-para-evitar-una-crisis-cada-dos-anos/" target="_blank">Luciano Laspina: “Argentina necesita acuerdos básicos para evitar una crisis cada dos años”</a>
+            <span class="also-source">Pagina 12</span>
+            <a class="also-title" href="https://www.pagina12.com.ar/2026/04/12/la-oposicion-se-entusiasma-con-la-posible-interpelacion-de-adorni/" target="_blank">La oposición se entusiasma con la posible interpelación de Adorni</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date">11/04</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">La Nacion</span>
+            <a class="also-title" href="https://www.lanacion.com.ar/politica/el-gobierno-debatio-la-inconveniencia-de-que-adorni-mantenga-su-silencio-y-volveria-a-las-nid11042026/" target="_blank">El Gobierno debatió la inconveniencia de que Adorni mantenga su silencio y volvería a las conferencias</a>
         </div>
     </div></div>
         
@@ -849,201 +837,29 @@ La salud mental, otra vez en el centro del debate</a>
         
         <div class="top-story-line">
             <span class="ts-label">Today's top story · <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay</span>
-            <div class="ts-title">Por "intermitencias" en el Whatsapp, Mides no estaba recibiendo reportes de personas en...</div>
+            <div class="ts-title">Mides omite fallas intermitentes en WhatsApp para personas en calle</div>
         </div>
 
-        <div class="sec-head">Key Stories &mdash; Uruguay (10)</div>
+        <div class="sec-head">Key Stories &mdash; Uruguay (1)</div>
         <p class="sec-desc">Multi-source stories where Uruguay's press is the dominant voice. Each card shows how different newsrooms framed the same event.</p>
         <div class="stories-grid">
     <div class="story">
         <div class="story-header">
             <span class="story-num">1</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
+            <span class="badge" style="background:#7d3c98;color:white">POL</span> <span class="sub-badge">Ejecutivo</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
             <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
         </div>
-        <div class="story-title">Por "intermitencias" en el Whatsapp, Mides no estaba recibiendo reportes de personas en...</div>
-        <div class="story-summary">A man died on the streets in Montevideo on Tuesday after neighbors reported his situation to the Ministry of Development Social (Mides) via WhatsApp, but the report was not received due to technical issues with the messaging service. Mides had launched a new strategy to address homelessness with 42 measures, including improving communication channels. The strategy's implementation details were not communicated to the public.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The Ministry of Development Social has been working to address homelessness in Uruguay, with a focus on increasing the number of people accessing its programs.</div>
+        <div class="story-title">Mides omite fallas intermitentes en WhatsApp para personas en calle</div>
+        <div class="story-summary">The Ministry of Social Development (Mides) failed to report intermittent failures in its WhatsApp reporting system for people experiencing homelessness. A union criticized the government for not clarifying how it would implement its homelessness strategy. The lapses affected the reception of reports via the platform.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Uruguay’s Mides has faced scrutiny over its management of social programs, including initiatives for homeless populations, amid ongoing institutional challenges.</div>
         <div class="story-body">
             <div class="story-variant">
                 <span class="sv-source">El Observador</span>
-                <a class="sv-title" href="https://www.elobservador.com.uy//nacional/por-intermitencias-el-whatsapp-mides-no-estaba-recibiendo-reportes-personas-situacion-calle-esa-via-pero-no-lo-comunico-n6040397" target="_blank">Por "intermitencias" en el Whatsapp, Mides no estaba recibiendo reportes de personas en situación de calle por esa vía, pero no lo comunicó</a>
+                <a class="sv-title" href="https://www.elobservador.com.uy//nacional/por-intermitencias-el-whatsapp-mides-no-estaba-recibiendo-reportes-personas-situacion-calle-esa-via-pero-no-lo-comunico-n6040397" target="_blank">Por &quot;intermitencias&quot; en el Whatsapp, Mides no estaba recibiendo reportes de personas en situación de calle por esa vía, pero no lo comunicó</a>
             </div>
             <div class="story-variant">
                 <span class="sv-source">La Diaria</span>
                 <a class="sv-title" href="https://ladiaria.com.uy/politica/articulo/2026/4/el-mides-esta-debilitado-sindicato-cuestiona-al-gobierno-por-no-explicar-como-ejecutara-su-estrategia-para-personas-en-situacion-de-calle/" target="_blank">“El Mides está debilitado”: sindicato cuestiona al gobierno por no explicar cómo ejecutará su estrategia para personas en situación de calle</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">2</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">BCU autorizó a Puente a operar como Administradora de Fondos de Inversión</div>
-        <div class="story-summary">The Superintendence of Financial Services of the Central Bank of Uruguay authorized Puente to operate as an investment fund administrator. Puente Administradora de Fondos de Inversión, part of the Grupo Puente, plans to launch a local currency investment fund backed by public debt instruments and immediate liquidity. The authorization allows Puente to expand its operations and offer new services in the local market.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The Central Bank of Uruguay has been regulating the financial services sector since its establishment in 1967.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">El Observador</span>
-                <a class="sv-title" href="https://www.elobservador.com.uy//economia-y-empresas/bcu-autorizo-puente-operar-como-administradora-fondos-inversion-n6040388" target="_blank">BCU autorizó a Puente a operar como administradora de fondos de inversión</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Montevideo Portal</span>
-                <a class="sv-title" href="https://www.montevideo.com.uy/auc.aspx?958489" target="_blank">BCU autorizó a Puente a operar como Administradora de Fondos de Inversión en Uruguay</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">3</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Justicia argentina hizo lugar a reclamo presentado por planta de hidrógeno verde y ordenó...</div>
-        <div class="story-summary">An Argentine federal court in Concepción del Uruguay partially granted a complaint filed by Argentine lawmakers Guillermo Michel, Marianela Marclay, and Adán Bahl against a green hydrogen plant project in Paysandú, Uruguay, and ordered measures involving Uruguay.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The construction of a green hydrogen plant in Paysandú, Uruguay, is part of a project led by the company HIF Global.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">El Observador</span>
-                <a class="sv-title" href="https://www.elobservador.com.uy//nacional/justicia-argentina-hizo-lugar-reclamo-presentado-planta-hidrogeno-verde-y-ordeno-medidas-que-involucran-uruguay-n6040379" target="_blank">Justicia argentina hizo lugar a reclamo presentado por planta de hidrógeno verde y ordenó medidas que involucran a Uruguay</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Pais UY</span>
-                <a class="sv-title" href="https://www.elpais.com.uy/informacion/politica/la-justicia-argentina-ordena-pruebas-tras-denuncia-contra-el-proyecto-de-planta-de-hidrogeno-verde-en-paysandu" target="_blank">La Justicia argentina ordena pruebas tras denuncia contra el proyecto de planta de hidrógeno verde en Paysandú</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">4</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Negro sobre caso Moisés: "tendría derecho a solicitar libertad anticipada" bajo el nuevo...</div>
-        <div class="story-summary">Uruguay's Interior Minister Carlos Negro stated that a prisoner, Moisés, would have the right to request early release after completing three-quarters of their sentence, under the new Penal Process Code. The code is currently being studied by the Parliament. The initiative proposes changes to the penal system, including a review of the criteria for early release.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The government has been working on a reform of the Penal Process Code, which aims to modernize the country's penal system.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">El Observador</span>
-                <a class="sv-title" href="https://www.elobservador.com.uy//nacional/tendria-derecho-pedirla-negro-hablo-del-caso-moises-y-su-posibilidad-solicitar-la-libertad-anticipada-n6040348" target="_blank">"Tendría derecho a pedirla": Negro habló del caso Moisés y su posibilidad de solicitar la libertad anticipada</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Pais UY</span>
-                <a class="sv-title" href="https://www.elpais.com.uy/opinion/ecos/codigo-del-proceso-penal-9-4" target="_blank">Código del Proceso Penal</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">5</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Para Andrés Ojeda, el Plan Nacional de Seguridad Pública “perjudicó” a Negro en la...</div>
-        <div class="story-summary">Uruguayan Senator Robert Silva evaluated the 14-hour interpelation of Interior Minister Carlos Negro, which focused on the government's security plan, and stated that the instance showed differences between the ruling party and opposition.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The government's security plan has been a central topic of debate in Uruguay's legislative process.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">El Observador</span>
-                <a class="sv-title" href="https://www.elobservador.com.uy//nacional/robert-silva-cuestiono-plan-seguridad-del-gobierno-y-evaluo-interpelacion-negro-hay-que-tomar-medidas-n6040344" target="_blank">Robert Silva cuestionó plan de seguridad del gobierno y evaluó interpelación a Negro: "Hay que tomar medidas"</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">La Diaria</span>
-                <a class="sv-title" href="https://ladiaria.com.uy/politica/articulo/2026/4/para-andres-ojeda-el-plan-nacional-de-seguridad-publica-perjudico-a-negro-en-la-interpelacion-y-era-mejor-que-fuera-solo-con-los-datos/" target="_blank">Para Andrés Ojeda, el Plan Nacional de Seguridad Pública “perjudicó” a Negro en la interpelación y “era mejor que fuera “solo con los datos”</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">6</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Montevideo será sede por primera vez de la Cumbre Mundial de Comunicación Política</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">Montevideo Portal</span>
-                <a class="sv-title" href="https://www.montevideo.com.uy/auc.aspx?958598" target="_blank">Montevideo será sede por primera vez de la Cumbre Mundial de Comunicación Política</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Pais UY</span>
-                <a class="sv-title" href="https://www.elpais.com.uy/clima" target="_blank">Montevideo, T 19° H 63%</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">7</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Reinicia la pantalla principal</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">Montevideo Portal</span>
-                <a class="sv-title" href="https://www.montevideo.com.uy/" target="_blank">Volver a la página principal</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Observador</span>
-                <a class="sv-title" href="https://www.elobservador.com.uy/" target="_blank">Volver a la pantalla principal</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">8</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Nacional vs. Deportivo Maldonado</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">El Pais UY</span>
-                <a class="sv-title" href="https://www.elpais.com.uy/ovacion/futbol/deportivo-maldonado-vs-nacional-por-el-torneo-apertura-hora-probables-formaciones-y-donde-verlo-en-vivo" target="_blank">Nacional vs. Deportivo Maldonado</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">El Observador</span>
-                <a class="sv-title" href="https://www.elobservador.com.uy/futbol/deportivo-maldonado-vs-nacional-vivo-el-tricolor-viaja-maldonado-busca-seguir-la-pelea-el-torneo-apertura-n6040439" target="_blank">EN VIVO
-Deportivo Maldonado vs Nacional EN VIVO: Santiago Ramírez abre el marcador para el local</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">9</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Santander reconocida como mejor banca privada para clientes HNW en el mundo</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">Montevideo Portal</span>
-                <a class="sv-title" href="https://www.montevideo.com.uy/auc.aspx?958491" target="_blank">Santander fue elegida mejor banca privada para clientes HNW en el mundo</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Hoy</span>
-                <a class="sv-title" href="https://www.hoy.com.py/nacionales/2026/04/11/el-mejor-plato-del-mundo-en-el-2026-el-vori-vori" target="_blank">El mejor plato del mundo en el 2026: el vori vori</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">10</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Uruguay: el Banco Mundial celebra su ajuste económico</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">El Observador</span>
-                <a class="sv-title" href="https://www.elobservador.com.uy//economia-y-empresas/uruguay-la-superestrella-que-dejo-serlo-segun-la-mirada-del-banco-mundial-n6040115" target="_blank">Uruguay: la superestrella que dejó de serlo, según la mirada del Banco Mundial</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Pagina 12</span>
-                <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/09/el-banco-mundial-celebra-el-ajuste/" target="_blank">El Banco Mundial celebra el ajuste</a>
             </div></div>
     </div></div>
 
@@ -1054,36 +870,6 @@ Deportivo Maldonado vs Nacional EN VIVO: Santiago Ramírez abre el marcador para
         <div class="also-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay &mdash; Also Reported</div>
         
         <div class="also-item">
-            <span class="also-date">08/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">Montevideo Portal</span>
-            <a class="also-title" href="https://www.montevideo.com.uy/auc.aspx?958368" target="_blank">País pionero: más de 1.700.000 hogares uruguayos con medidores inteligentes</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date">08/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">El Observador</span>
-            <a class="also-title" href="https://www.elobservador.com.uy//economia-y-empresas/bps-mayor-cantidad-jubilaciones-y-aumento-la-asistencia-financiera-recibida-del-estado-2025-n6039978" target="_blank">BPS: mayor cantidad de jubilaciones y aumento de la asistencia financiera recibida del Estado en 2025</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date"></span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">La Diaria</span>
-            <a class="also-title" href="https://ladiaria.com.uy/mundo/articulo/2026/2/fue-asesinado-en-su-casa-saif-al-islam-gadafi-hijo-del-gobernante-libio-derrocado-muamar-gadafi/" target="_blank">Fue asesinado en su casa Saif al Islam Gadafi, hijo del gobernante libio derrocado Muamar Gadafi</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date"></span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">El Pais UY</span>
-            <a class="also-title" href="https://www.elpais.com.uy/mundo/gobierno-aleman-y-otros-paises-impactados-politicamente-en-forma-interna-por-la-suba-del-precio-del-petroleo" target="_blank">Gobierno alemán y otros países impactados políticamente en forma interna por la suba del precio del petróleo</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date">08/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">Montevideo Portal</span>
-            <a class="also-title" href="https://www.montevideo.com.uy/auc.aspx?958115" target="_blank">Lucas Etcheverrito remata online 24 terrenos en La Paloma y Punta del Diablo</a>
-        </div>
-        <div class="also-item">
             <span class="also-date">01/04</span>
             <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
             <span class="also-source">El Observador</span>
@@ -1091,27 +877,57 @@ Deportivo Maldonado vs Nacional EN VIVO: Santiago Ramírez abre el marcador para
         </div>
         <div class="also-item">
             <span class="also-date"></span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">La Diaria</span>
-            <a class="also-title" href="https://ladiaria.com.uy/mundo/articulo/2026/2/el-pueblo-sin-estado-mas-grande-del-mundo/" target="_blank">El pueblo sin Estado más grande del mundo</a>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">El Pais UY</span>
+            <a class="also-title" href="https://www.elpais.com.uy/mundo/gobierno-aleman-y-otros-paises-impactados-politicamente-en-forma-interna-por-la-suba-del-precio-del-petroleo" target="_blank">Gobierno alemán y otros países impactados políticamente en forma interna por la suba del precio del petróleo</a>
         </div>
         <div class="also-item">
             <span class="also-date"></span>
             <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">El Pais UY</span>
-            <a class="also-title" href="https://www.elpais.com.uy/mundo/el-presidente-trump-anuncia-haber-ganado-la-guerra-contra-iran-mas-alla-de-las-negociaciones-en-curso" target="_blank">El presidente Trump anuncia haber ganado la guerra contra Irán, más allá de las negociaciones en curso</a>
+            <span class="also-source">Subrayado</span>
+            <a class="also-title" href="https://www.subrayado.com.uy/basta-ya-la-guerra-dijo-el-papa-leon-xiv-una-contundente-critica-los-conflictos-n1004914" target="_blank">&quot;Basta ya de la guerra&quot;, dijo el papa León XIV en una contundente crítica a los conflictos</a>
         </div>
         <div class="also-item">
-            <span class="also-date">01/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">Montevideo Portal</span>
-            <a class="also-title" href="https://www.montevideo.com.uy/auc.aspx?957738" target="_blank">Divino presenta el primer Catálogo 3D del país para estudiantes y profesionales del diseño</a>
+            <span class="also-date"></span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">La Diaria</span>
+            <a class="also-title" href="https://ladiaria.com.uy/politica/articulo/2026/4/lazo-confirmo-que-se-esta-evaluando-como-retirar-el-material-de-las-patrullas-oceanicas-que-esta-en-el-astillero-de-cardama/" target="_blank">Lazo confirmó que se está evaluando cómo retirar el material de las patrullas oceánicas que está en el astillero de Cardama</a>
         </div>
         <div class="also-item">
-            <span class="also-date">24/03</span>
+            <span class="also-date"></span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">Busqueda</span>
+            <a class="also-title" href="https://www.busqueda.com.uy/politica/interpelacion-negro-medidas-sustituir-y-acortar-penas-carcel-quedaron-el-centro-del-debate-n5412073" target="_blank">Seguridad Interpelación a Negro: medidas para sustituir y acortar penas de cárcel quedaron en el centro del debate El ministro del Interior afirmó que el gobierno no pretende “liberar presos”, como aseguró el senador colorado Pedro Bordaberry POR REDACCIÓN BÚSQUEDA</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date">12/04</span>
             <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
             <span class="also-source">El Observador</span>
-            <a class="also-title" href="https://www.elobservador.com.uy//mundo/el-supremo-brasil-concede-prision-domiciliaria-temporal-el-expresidente-jair-bolsonaro-n6038591" target="_blank">El Supremo de Brasil concede prisión domiciliaria "temporal" para el expresidente Jair Bolsonaro</a>
+            <a class="also-title" href="https://www.elobservador.com.uy//bbc-news-mundo/china-o-eeuu-quien-esta-ganando-la-carrera-dominar-la-tecnologia-la-ia-n6040455" target="_blank">¿China o EEUU? Quién está ganando la carrera por dominar la tecnología de la IA</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date"></span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">El Pais UY</span>
+            <a class="also-title" href="https://www.elpais.com.uy/mundo/elecciones-en-hungria-victor-orban-respaldado-por-trump-podria-tener-que-dejar-el-poder-segun-encuestas" target="_blank">Elecciones en Hungría: Víctor Orban, respaldado por Trump, podría tener que dejar el poder, según encuestas</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date"></span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
+            <span class="also-source">Subrayado</span>
+            <a class="also-title" href="https://www.subrayado.com.uy/buques-guerra-estados-unidos-cruzan-el-estrecho-ormuz-desminarlos-n1004908" target="_blank">Buques de guerra de Estados Unidos cruzan el estrecho de Ormuz para desminarlos Trump afirmó que Estados Unidos había iniciado &quot;el proceso de desbloqueo del estrecho de Ormuz como un favor a países de todo el mundo&quot;.</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date"></span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
+            <span class="also-source">La Diaria</span>
+            <a class="also-title" href="https://ladiaria.com.uy/mundo/articulo/2026/4/trump-dijo-que-si-las-conversaciones-fracasan-esta-listo-para-reanudar-los-ataques-a-iran/" target="_blank">Trump dijo que si las conversaciones fracasan, está listo para reanudar los ataques a Irán</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date">12/04</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">El Observador</span>
+            <a class="also-title" href="https://www.elobservador.com.uy//nacional/un-40-los-padres-uruguayos-que-viven-su-pareja-y-sus-hijos-no-participa-los-cuidados-infantiles-n6040261" target="_blank">Un 40% de los padres uruguayos que viven con su pareja y sus hijos no participa de los cuidados infantiles</a>
         </div>
     </div></div>
         
@@ -1121,220 +937,48 @@ Deportivo Maldonado vs Nacional EN VIVO: Santiago Ramírez abre el marcador para
         
         <div class="top-story-line">
             <span class="ts-label">Today's top story · <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</span>
-            <div class="ts-title">Alliana acepta la candidatura presidencial por Honor Colorado</div>
+            <div class="ts-title">Alliana acepta precandidatura presidencial 2028 por ANR</div>
         </div>
 
-        <div class="sec-head">Key Stories &mdash; Paraguay (10)</div>
+        <div class="sec-head">Key Stories &mdash; Paraguay (2)</div>
         <p class="sec-desc">Multi-source stories where Paraguay's press is the dominant voice. Each card shows how different newsrooms framed the same event.</p>
         <div class="stories-grid">
     <div class="story">
         <div class="story-header">
             <span class="story-num">1</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
-            <span class="story-sources">3 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
+            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
         </div>
-        <div class="story-title">Alliana acepta la candidatura presidencial por Honor Colorado</div>
-        <div class="story-summary">Paraguayan Vice President Pedro Alliana accepted the presidential candidacy for the Honor Colorado movement. The decision was made after a meeting with ANR President Horacio Cartes. The internal crisis within Honor Colorado has been ongoing since a senator's comments about the Cartes government.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>Paraguay's government, led by President Santiago Peña, has been facing criticism and challenges since the start of its second term.</div>
+        <div class="story-title">ANDE digitaliza 33% de la red eléctrica paraguaya</div>
+        <div class="story-summary">ANDE, Paraguay&#x27;s state power utility, has reached 33% completion in the digitalization of its national electrical grid. The project aims to enhance efficiency and reliability in electricity distribution. Work is ongoing to expand coverage across the country.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>ANDE&#x27;s digitalization initiative is part of a broader modernization plan to upgrade Paraguay&#x27;s electrical infrastructure and reduce energy losses.</div>
         <div class="story-body">
             <div class="story-variant">
                 <span class="sv-source">ABC Color</span>
-                <a class="sv-title" href="https://www.abc.com.py/politica/2026/04/12/honor-colorado-en-crisis-y-al-borde-del-desbande-a-dos-meses-de-las-internas-municipales/" target="_blank">Honor Colorado en crisis y al borde del desbande a dos meses de las internas municipales</a>
+                <a class="sv-title" href="https://www.abc.com.py/economia/2026/04/12/ande-alcanza-el-33-de-avance-en-la-digitalizacion-de-su-red-electrica-nacional/" target="_blank">ANDE alcanza el 33% de avance en la digitalización de su red eléctrica nacional</a>
             </div>
             <div class="story-variant">
                 <span class="sv-source">La Nacion PY</span>
-                <a class="sv-title" href="http://www.lanacion.com.py/politica/2026/04/10/alliana-acepta-la-candidatura-presidencial-por-honor-colorado/" target="_blank">Alliana acepta la candidatura presidencial por Honor Colorado</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Hoy</span>
-                <a class="sv-title" href="https://www.hoy.com.py/politica/2026/04/09/la-armonia-en-honor-colorado-es-total-no-existe-ningun-quiebre-dice-barrios" target="_blank">La armonía en Honor Colorado es total, no existe ningún quiebre, dice Barrios</a>
+                <a class="sv-title" href="http://www.lanacion.com.py/negocios/2026/04/11/ande-proyecta-mejoras-con-digitalizacion-de-su-red-electrica/" target="_blank">Ande proyecta mejoras con digitalización de su red eléctrica</a>
             </div></div>
     </div>
     <div class="story">
         <div class="story-header">
             <span class="story-num">2</span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
-            <span class="story-sources">5 sources <span class="coverage-dots"><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span></span></span>
-        </div>
-        <div class="story-title">EE.UU. y Irán mantienen tensas negociaciones sobre el estrecho de Ormuz</div>
-        <div class="story-summary">US and Iranian delegations held their first direct talks since 1979 in Islamabad, Pakistan, on Sunday, after 21 hours of negotiations, but failed to reach an agreement due to disagreements over the nuclear program and control of the Strait of Hormuz.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The talks were part of ongoing diplomatic efforts to resolve the conflict between the US and Iran, which has been ongoing for several weeks.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">ABC Color</span>
-                <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/12/que-ha-fracturado-el-dialogo-en-islamabad-las-3-lineas-rojas-que-separan-a-eeuu-e-iran/" target="_blank">¿Qué ha fracturado el diálogo en Islamabad? Las 3 líneas rojas que separan a EE.UU. e Irán</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Ultima Hora</span>
-                <a class="sv-title" href="https://www.ultimahora.com/iran-y-eeuu-acaban-con-optimismo-su-primer-dialogo-directo-desde-1979" target="_blank">Irán y EEUU acaban con “optimismo” su primer diálogo directo desde 1979</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">La Nacion PY</span>
-                <a class="sv-title" href="http://www.lanacion.com.py/mundo/2026/04/10/iran-no-tiene-ninguna-carta-mas-alla-del-control-del-estrecho-de-ormuz-asegura-trump/" target="_blank">Irán no tiene ninguna carta más allá del control del estrecho de Ormuz, asegura Trump</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Pagina 12</span>
-                <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/10/trump-amenaza-a-iran-si-no-logramos-un-acuerdo-utilizaremos-armas-mejores/" target="_blank">Trump amenaza a Irán: “Si no logramos un acuerdo, utilizaremos armas mejores”</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Hoy</span>
-                <a class="sv-title" href="https://www.hoy.com.py/mundo/2026/04/06/trump-amenaza-a-iran-con-destruir-todo-el-pais-si-no-reabre-el-estrecho-de-ormuz" target="_blank">Trump amenaza a Irán con destruir “todo” el país si no reabre el estrecho de Ormuz</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">3</span>
             <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
             <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
         </div>
-        <div class="story-title">“Bukele‘i” desafía a Núñez a medirse en julio y la acusa de vincularse con “delincuentes”</div>
-        <div class="story-summary">Rodrigo Franco, also a candidate for Asunción mayor, challenged Soledad Núñez, former housing minister, to undergo polls in July. The goal is for the opposition to face united against the Asociación Nacional Republicana (ANR) in the October 4 municipal elections. Franco questioned the validity of a previous poll that gave Núñez victory over Johanna Ortega.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The election for mayor of Asunción is part of the ongoing process of municipal elections in Paraguay scheduled for October 4.</div>
+        <div class="story-title">Alliana acepta precandidatura presidencial 2028 por ANR</div>
+        <div class="story-summary">Paraguayan Vice President Pedro Alliana officially accepted the presidential precandidacy for the 2028 general elections under the Honor Colorado movement. The announcement followed a meeting with ANR party leader Horacio Cartes, who endorsed Alliana’s candidacy and granted him freedom to choose a running mate. Alliana’s bid positions him as a potential successor to current President Santiago Peña.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Honor Colorado is a faction within Paraguay’s ruling ANR (Colorado) Party, which has governed the country since 1947.</div>
         <div class="story-body">
             <div class="story-variant">
                 <span class="sv-source">La Nacion PY</span>
-                <a class="sv-title" href="http://www.lanacion.com.py/politica/2026/04/11/bukelei-desafia-a-nunez-a-medirse-en-julio-y-la-acusa-de-vincularse-con-delincuentes/" target="_blank">“Bukele‘i” desafía a Núñez a medirse en julio y la acusa de vincularse con “delincuentes”</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">ABC Color</span>
-                <a class="sv-title" href="https://www.abc.com.py/politica/2026/04/11/bukelei-desafia-a-sole-a-encuesta-repudia-imposicion-y-le-cuestiona-alianza-con-complices-de-nenecho/" target="_blank">“Bukele’i” desafía a Sole a encuesta y le cuestiona alianza con cómplices de Nenecho</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">4</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Gobierno oficializa este sábado la entrega de 7.594 becas universitarias y técnicas</div>
-        <div class="story-summary">Paraguayan President Peña announced the distribution of 7,594 university scholarships on Saturday. The scholarships are for higher education. The event took place in Paraguay.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The government has been implementing a scholarship program for higher education.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">La Nacion PY</span>
-                <a class="sv-title" href="http://www.lanacion.com.py/politica/2026/04/11/pena-oficializo-la-entrega-de-7594-becas-universitarias-somos-paraguay-somos-gigantes/" target="_blank">Peña oficializó la entrega de 7.594 becas universitarias: “Somos Paraguay, somos gigantes”</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">ABC Color</span>
-                <a class="sv-title" href="https://www.abc.com.py/nacionales/2026/04/11/gobierno-entrega-casi-7600-becas-para-educacion-superior/" target="_blank">Gobierno entrega casi 7.600 becas para educación superior</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">5</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Richard Reichardt oficializa su candidatura de la mano de Camilo</div>
-        <div class="story-summary">Richard Reichardt announced his candidacy for the Junta Municipal de Asunción, backed by Camilo Pérez, a precandidate for intendente capitalino. Reichardt highlighted his experience working with Pérez, including as director of the Parque Olímpico Paraguayo. The announcement was made on an unspecified date.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The announcement is part of the ongoing process of municipal elections in Paraguay.</div>
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">La Nacion PY</span>
-                <a class="sv-title" href="http://www.lanacion.com.py/politica/2026/04/11/reichardt-avanza-con-candidatura-para-la-junta-municipal-de-asuncion-y-destaca-resultados-en-la-gestion/" target="_blank">Reichardt avanza con candidatura para la Junta Municipal de Asunción y destaca resultados en la gestión</a>
+                <a class="sv-title" href="http://www.lanacion.com.py/politica/2026/04/12/alliana-acepta-candidatura-presidencial-por-honor-colorado/" target="_blank">Alliana acepta candidatura presidencial por Honor Colorado</a>
             </div>
             <div class="story-variant">
                 <span class="sv-source">Hoy</span>
-                <a class="sv-title" href="https://www.hoy.com.py/politica/2026/04/11/richard-reichardt-oficializa-su-candidatura-de-la-mano-de-camilo" target="_blank">Richard Reichardt oficializa su candidatura de la mano de Camilo</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">6</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Cartes seguirá trabajando por el país y el partido, afirma Alliana</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">La Nacion PY</span>
-                <a class="sv-title" href="http://www.lanacion.com.py/politica/2026/04/10/cartes-seguira-trabajando-por-el-pais-y-el-partido-afirma-alliana/" target="_blank">Cartes seguirá trabajando por el país y el partido, afirma Alliana</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Hoy</span>
-                <a class="sv-title" href="https://www.hoy.com.py/politica/2026/04/09/luis-bello-resalta-el-respaldo-de-cartes-y-su-liderazgo-en-el-partido-colorado" target="_blank">Luis Bello resalta el respaldo de Cartes y su liderazgo en el Partido Colorado</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">7</span>
-            <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Camilo mira octubre y recibe fuerte respaldo de los colorados de capital</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">La Nacion PY</span>
-                <a class="sv-title" href="http://www.lanacion.com.py/politica/2026/04/10/camilo-mira-octubre-y-recibe-fuerte-respaldo-de-los-colorados-de-capital/" target="_blank">Camilo mira octubre y recibe fuerte respaldo de los colorados de capital</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Hoy</span>
-                <a class="sv-title" href="https://www.hoy.com.py/politica/2026/04/10/camilo-perez-recibe-gran-apoyo-de-funcionarios-colorados" target="_blank">Camilo Pérez recibe gran apoyo de funcionarios colorados</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">8</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Constructoras esperan acuerdo en 15 días con el MEF por deuda estatal</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">Hoy</span>
-                <a class="sv-title" href="https://www.hoy.com.py/nacionales/2026/04/11/constructoras-otorgan-plazo-de-hasta-15-dias-para-definir-plan-concreto-de-pago-de-deudas" target="_blank">Constructoras otorgan plazo de hasta 15 días para definir plan concreto de pago de deudas</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Ultima Hora</span>
-                <a class="sv-title" href="https://www.ultimahora.com/constructoras-esperan-acuerdo-en-15-dias-con-el-mef-por-deuda-estatal" target="_blank">Constructoras esperan acuerdo en 15 días con el MEF por deuda estatal</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">9</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#1a6fa3;color:white">INTL</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">3 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
-        </div>
-        <div class="story-title">Para la city, "la calle" es un riesgo creciente contra el Gobierno: suba en combustibles, más...</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">ABC Color</span>
-                <a class="sv-title" href="https://www.abc.com.py/nacionales/2026/04/11/cuestionan-al-gobierno-y-tildan-de-falacia-el-crecimiento-economico-ante-suba-de-combustibles/" target="_blank">Cuestionan al Gobierno y tildan de falacia el crecimiento económico ante suba de combustibles</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">Ambito</span>
-                <a class="sv-title" href="https://www.ambito.com/finanzas/para-la-city-la-calle-es-un-riesgo-creciente-contra-el-gobierno-suba-combustibles-mas-inflacion-y-salarios-rezagados-n6265264" target="_blank">Para la city, "la calle" es un riesgo creciente contra el Gobierno: suba en combustibles, más inflación y salarios rezagados</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">La Diaria</span>
-                <a class="sv-title" href="https://ladiaria.com.uy/mundo/articulo/2026/4/el-gobierno-de-lula-anuncio-nuevas-medidas-para-contener-la-suba-de-los-precios-de-los-combustibles/" target="_blank">El gobierno de Lula anunció nuevas medidas para contener la suba de los precios de los combustibles</a>
-            </div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">10</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#1a6fa3;color:white">INTL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
-            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
-        </div>
-        <div class="story-title">Panamá podría albergar un hub de redistribución de exportaciones de carne paraguaya</div>
-        
-        
-        <div class="story-body">
-            <div class="story-variant">
-                <span class="sv-source">ABC Color</span>
-                <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/12/panama-podria-albergar-un-hub-de-redistribucion-de-exportaciones-de-carne-paraguaya/" target="_blank">Panamá podría albergar un hub de redistribución de exportaciones de carne paraguaya</a>
-            </div>
-            <div class="story-variant">
-                <span class="sv-source">La Nacion PY</span>
-                <a class="sv-title" href="http://www.lanacion.com.py/negocios/2026/04/13/carne-paraguaya-avanza-en-gestiones-para-ganar-espacio-en-ee-uu-y-mas-mercados/" target="_blank">Carne paraguaya avanza en gestiones para ganar espacio en EE. UU. y más mercados</a>
+                <a class="sv-title" href="https://www.hoy.com.py/politica/2026/04/11/alliana-acepta-ser-candidato-de-honor-colorado-quien-sera-su-vice" target="_blank">Alliana acepta ser candidato de Honor Colorado: ¿quién será su vice?</a>
             </div></div>
     </div></div>
 
@@ -1345,64 +989,64 @@ Deportivo Maldonado vs Nacional EN VIVO: Santiago Ramírez abre el marcador para
         <div class="also-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay &mdash; Also Reported</div>
         
         <div class="also-item">
-            <span class="also-date">09/04</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">La Nacion PY</span>
-            <a class="also-title" href="http://www.lanacion.com.py/negocios/2026/04/09/comercio-exterior-paraguayo-en-transicion-mas-importaciones-y-mayor-inversion-extranjera/" target="_blank">Comercio exterior paraguayo en transición, más importaciones y mayor inversión extranjera</a>
+            <span class="also-date">12/04</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">ABC Color</span>
+            <a class="also-title" href="https://www.abc.com.py/nacionales/2026/04/12/mec-dan-clases-en-bano-desmantelado-por-falta-de-aulas-en-mariano-roque-alonso/" target="_blank">MEC: dan clases en baño desmantelado por falta de aulas en Mariano Roque Alonso</a>
         </div>
         <div class="also-item">
             <span class="also-date">12/04</span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">ABC Color</span>
-            <a class="also-title" href="https://www.abc.com.py/internacionales/2026/04/12/iran-detiene-a-otros-170-sospechosos-por-supuesto-espionaje-para-israel-y-ee-uu/" target="_blank">Irán detiene a otros 170 sospechosos por supuesto espionaje para Israel y EE. UU.</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date"></span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">Hoy</span>
-            <a class="also-title" href="https://www.hoy.com.py/mundo/2026/04/07/utimatum-de-trump-a-iran-vence-hoy-todo-el-pais-podria-ser-eliminado-en-una-sola-noche" target="_blank">Utimátum de Trump a Irán vence hoy: “Todo el país podría ser eliminado en una sola noche”</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date"></span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">Ultima Hora</span>
-            <a class="also-title" href="https://www.ultimahora.com/leon-xiv-hara-historia-con-la-primera-visita-papal-a-argelia-mayoritariamente-musulman" target="_blank">León XIV hará historia con la primera visita papal a Argelia, mayoritariamente musulmán</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date">11/04</span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">La Nacion PY</span>
-            <a class="also-title" href="http://www.lanacion.com.py/mundo/2026/04/11/sahara-marroqui-mali-retira-su-reconocimiento-a-la-autoproclamada-rasd/" target="_blank">Sáhara marroquí: Mali retira su reconocimiento a la autoproclamada “RASD”</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date">12/04</span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">ABC Color</span>
-            <a class="also-title" href="https://www.abc.com.py/internacionales/2026/04/12/al-menos-13-muertos-en-un-nuevo-episodio-de-violencia-intercomunitaria-en-sudan-del-sur/" target="_blank">Al menos 13 muertos en un nuevo episodio de violencia intercomunitaria en Sudán del Sur</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date"></span>
-            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
-            <span class="also-source">Hoy</span>
-            <a class="also-title" href="https://www.hoy.com.py/mundo/2026/04/07/trump-advierte-que-una-civilizacion-entera-morira-a-falta-de-acuerdo-con-iran" target="_blank">Trump advierte que “una civilización entera morirá” a falta de acuerdo con Irán</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date"></span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
-            <span class="also-source">Ultima Hora</span>
-            <a class="also-title" href="https://www.ultimahora.com/trabajo-plantea-tres-opciones-para-nuevo-calculo-del-salario-minimo" target="_blank">Trabajo plantea tres opciones para nuevo cálculo del salario mínimo</a>
-        </div>
-        <div class="also-item">
-            <span class="also-date">11/04</span>
             <span class="badge" style="background:#7d3c98;color:white">POL</span>
             <span class="also-source">La Nacion PY</span>
-            <a class="also-title" href="http://www.lanacion.com.py/politica/2026/04/11/che-roga-pora-se-posiciona-como-primera-opcion-de-vivienda-propia-en-ciudades-de-central/" target="_blank">Che Róga Porã se posiciona como primera opción de vivienda propia en ciudades de Central</a>
+            <a class="also-title" href="http://www.lanacion.com.py/politica/2026/04/12/arranco-el-plan-vial-asu-400-cuadras-que-apunta-a-mejorar-la-circulacion-vehicular/" target="_blank">Arrancó el plan vial “ASU 400 cuadras” que apunta a mejorar la circulación vehicular</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date"></span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
+            <span class="also-source">Hoy</span>
+            <a class="also-title" href="https://www.hoy.com.py/mundo/2026/04/11/luego-de-artemis-ii-la-nasa-recurre-a-musk-y-bezos-para-alunizar" target="_blank">Luego de Artemis II, la NASA recurre a Musk y Bezos para alunizar</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date"></span>
+            <span class="badge" style="background:#d4a800;color:#003049">ECON</span>
+            <span class="also-source">Ultima Hora</span>
+            <a class="also-title" href="https://www.ultimahora.com/america-latina-pierde-inversion-en-educacion-desde-la-pandemia-por-covid-19-alerta-la-oei" target="_blank">América Latina pierde inversión en educación desde la pandemia por covid-19, alerta la OEI</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date"></span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">IP Paraguay</span>
+            <a class="also-title" href="https://www.ip.gov.py/ip/2026/04/11/gobierno-entrega-7-594-becas-para-estudios-en-una-convocatoria-que-crece-cada-ano/" target="_blank">Gobierno entrega 7.594 becas para estudios en una convocatoria que crece cada año</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date">12/04</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">ABC Color</span>
+            <a class="also-title" href="https://www.abc.com.py/politica/2026/04/12/es-una-estafa-venden-humo-embajador-de-brasil-advierte-a-senadora-sobre-carreras-de-medicina/" target="_blank">“Es una estafa, venden humo”: embajador de Brasil advierte a senadora sobre carreras de Medicina</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date">12/04</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">La Nacion PY</span>
+            <a class="also-title" href="http://www.lanacion.com.py/mundo/2026/04/12/peruanos-eligen-hoy-a-su-presidente-de-entre-35-candidatos/" target="_blank">Peruanos eligen hoy a su presidente de entre 35 candidatos</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date"></span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span>
+            <span class="also-source">Hoy</span>
+            <a class="also-title" href="https://www.hoy.com.py/nacionales/2026/04/12/dia-de-lucha-contra-el-cancer-de-mama-fortalecen-acceso-a-mamografias-en-el-pais" target="_blank">Día de Lucha contra el Cáncer de Mama: fortalecen acceso a mamografías en el país</a>
+        </div>
+        <div class="also-item">
+            <span class="also-date"></span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
+            <span class="also-source">Ultima Hora</span>
+            <a class="also-title" href="https://www.ultimahora.com/iran-y-eeuu-acaban-con-optimismo-su-primer-dialogo-directo-desde-1979" target="_blank">Irán y EEUU acaban con “optimismo” su primer diálogo directo desde 1979</a>
         </div>
         <div class="also-item">
             <span class="also-date">12/04</span>
             <span class="badge" style="background:#1a6fa3;color:white">INTL</span>
             <span class="also-source">ABC Color</span>
-            <a class="also-title" href="https://www.abc.com.py/internacionales/2026/04/12/empiezan-las-elecciones-presidenciales-en-benin-sin-el-principal-partido-opositor/" target="_blank">Empiezan las elecciones presidenciales en Benín, sin el principal partido opositor</a>
+            <a class="also-title" href="https://www.abc.com.py/internacionales/2026/04/12/miles-de-argentinos-se-unen-a-la-batalla-legal-contra-la-mineria-cerca-de-los-glaciares/" target="_blank">Miles de argentinos se unen a la batalla legal contra la minería cerca de los glaciares</a>
         </div>
     </div></div>
         
@@ -1415,98 +1059,258 @@ Deportivo Maldonado vs Nacional EN VIVO: Santiago Ramírez abre el marcador para
             <div class="ts-title">Stories picked up by the press of two or more countries.</div>
         </div>
 
-        <div class="sec-head">Regional Stories (2)</div>
+        <div class="sec-head">Regional Stories (0)</div>
         <p class="sec-desc">Events covered by newsrooms from multiple Cono Sur countries. Source lines are grouped by country so you can compare how each national press framed the same event.</p>
+        <div class="stories-grid"><p class="muted">No cross-border stories in this cycle.</p></div>
+    
+    </section>
+
+    <section id="tab-intl" class="tab-panel" role="tabpanel">
+        
+        <div class="top-story-line">
+            <span class="ts-label">International coverage · 🌍</span>
+            <div class="ts-title">Global events covered by Cono Sur media but not primarily about the region.</div>
+        </div>
+
+        <div class="sec-head">International Stories (10)</div>
+        <p class="sec-desc">Events from outside the Cono Sur that received multi-source coverage in the region's press.</p>
         <div class="stories-grid">
     <div class="story">
         <div class="story-header">
             <span class="story-num">1</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#1a6fa3;color:white">INTL</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
-            <span class="story-sources">9 sources <span class="coverage-dots"><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span></span></span>
-        </div>
-        <div class="story-title">Guerra en Medio Oriente</div>
-        <div class="story-summary">Pakistani Foreign Minister Ishaq Dar urged the US and Iran to maintain their ceasefire agreement after negotiations concluded without a deal to end the Middle East war. The talks, the first direct high-level contact between the US and Iran in 47 years, ended after 21 hours of dialogue. The US and Iran had agreed to a two-week temporary truce.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The US and Iran have been engaged in a longstanding conflict in the Middle East, with the US imposing sanctions on Iran and Iran retaliating with missile attacks on US military bases.</div>
-        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
-                <div class="story-variant">
-                    <span class="sv-source">Pagina 12</span>
-                    <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/09/eeuu-asegura-que-quiere-un-alto-el-fuego-duradero-y-efectivo-con-iran/" target="_blank">EE.UU. asegura que quiere un alto el fuego “duradero y efectivo” con Irán</a>
-                </div>
-                <div class="story-variant">
-                    <span class="sv-source">Infobae</span>
-                    <a class="sv-title" href="https://www.infobae.com/america/mundo/2026/04/12/pakistan-exhorto-a-eeuu-e-iran-a-respetar-el-alto-al-fuego-en-medio-oriente-tras-las-fallidas-negociaciones-por-la-paz/" target="_blank">Pakistán exhortó a EEUU e Irán a respetar el alto al fuego en Medio Oriente tras las fallidas negociaciones por la paz</a>
-                </div>
-                <div class="story-variant">
-                    <span class="sv-source">La Nacion</span>
-                    <a class="sv-title" href="https://www.lanacion.com.ar/economia/finanzas-interrogantes-en-el-mercado-sobre-cuanto-durara-la-tregua-en-medio-oriente-nid12042026/" target="_blank">Finanzas: interrogantes en el mercado sobre cuánto durará la tregua en Medio Oriente</a>
-                </div>
-                <div class="story-variant">
-                    <span class="sv-source">Ambito</span>
-                    <a class="sv-title" href="https://www.ambito.com/mundo/medio-oriente-iran-estados-unidos-israel-tregua-petroleo-pakistan-guerra-ultimo-momento-en-vivo-11-abril" target="_blank">Guerra en Medio Oriente EN VIVO: EEUU e Irán retomarán las negociaciones durante el domingo</a>
-                </div>
-                <div class="story-variant">
-                    <span class="sv-source">El Destape</span>
-                    <a class="sv-title" href="https://www.eldestapeweb.com/tag/conflicto-en-medio-oriente" target="_blank">CONFLICTO EN MEDIO ORIENTE</a>
-                </div>
-                <div class="story-variant">
-                    <span class="sv-source">Clarin</span>
-                    <a class="sv-title" href="https://www.clarin.com/mundo/guerra-estados-unidos-israel-iran-vivo-enviado-trump-reune-regimen-persa-pakistan-tratar-llegar-acuerdo-paz_0_dtAWzajEJO.html" target="_blank">Guerra en Medio Oriente</a>
-                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay</div>
-                <div class="story-variant">
-                    <span class="sv-source">La Diaria</span>
-                    <a class="sv-title" href="https://ladiaria.com.uy/economia/articulo/2026/4/cronicas-de-un-mundo-convulso-la-guerra-en-medio-oriente-y-sus-multiples-derivadas/" target="_blank">Crónicas de un mundo convulso: la guerra en Medio Oriente y sus múltiples derivadas</a>
-                </div>
-                <div class="story-variant">
-                    <span class="sv-source">El Pais UY</span>
-                    <a class="sv-title" href="https://www.elpais.com.uy/mundo/estados-unidos-e-iran-negocian-en-pakistan-una-posible-salida-de-la-guerra-de-medio-oriente" target="_blank">Negociación en Medio Oriente</a>
-                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
-                <div class="story-variant">
-                    <span class="sv-source">ABC Color</span>
-                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/12/pakistan-da-por-concluidas-las-negociaciones-y-pide-a-partes-que-sigan-con-alto-el-fuego/" target="_blank">Pakistán da por concluidas las negociaciones y pide a partes que sigan con alto el fuego</a>
-                </div></div></div>
-    </div>
-    <div class="story">
-        <div class="story-header">
-            <span class="story-num">2</span>
-            <span class="badge" style="background:#d4a800;color:#003049">ECON</span> <span class="badge" style="background:#1a6fa3;color:white">INTL</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span> <span class="sub-badge">Conflictos</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
             <span class="story-sources">8 sources <span class="coverage-dots"><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span><span class="cov-dot" style="background:#C1121F"></span></span></span>
         </div>
-        <div class="story-title">Fracasan negociaciones en Islamabad: JD Vance anuncia que Irán rechazó la oferta final de...</div>
-        <div class="story-summary">US and Israeli forces have been at war with Iran for 44 days, with negotiations between the two countries failing in Pakistan. The talks, which lasted 21 hours, did not result in an agreement, with the US delegation led by JD Vance citing 'unreasonable demands' from Iran. The war has resulted in casualties, including six people killed in an Israeli attack on Maaroub in southern Lebanon.</div>
-        <div class="story-context"><span class="ctx-label">Context</span>The conflict is part of the ongoing war between the US, Israel, and Iran, which has been ongoing since the start of the war.</div>
+        <div class="story-title">EE.UU., Irán y Pakistán cierran sin pacto tras 43 días de conflicto</div>
+        <div class="story-summary">The United States and Iran held talks in Pakistan without reaching an agreement after 43 days of conflict between the three nations. The negotiations involved complex discussions between U.S., Iranian, and Pakistani officials. The meeting marked a key diplomatic effort to address the ongoing hostilities.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>The U.S.-Iran conflict escalated following regional tensions, including attacks and counterattacks between the nations and their allies since mid-2024.</div>
         <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
-                <div class="story-variant">
-                    <span class="sv-source">La Nacion</span>
-                    <a class="sv-title" href="https://www.lanacion.com.ar/el-mundo/guerra-de-estados-unidos-e-israel-contra-iran-en-vivo-las-negociaciones-y-como-sigue-el-alto-al-nid12042026/" target="_blank">Guerra de Estados Unidos e Israel contra Irán, en vivo: las negociaciones y cómo sigue el alto al fuego</a>
-                </div>
                 <div class="story-variant">
                     <span class="sv-source">Pagina 12</span>
                     <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/11/encuentro-cara-a-cara-entre-eeuu-e-iran/" target="_blank">No hubo acuerdo en Pakistán entre Estados Unidos e Irán</a>
                 </div>
                 <div class="story-variant">
-                    <span class="sv-source">Clarin</span>
-                    <a class="sv-title" href="https://www.clarin.com/mundo/errores-presidente-mirada-democracia-estados-unidos_0_Pkeb8hMStq.html" target="_blank">Todos los errores del presidente: una mirada sobre la democracia en Estados Unidos</a>
+                    <span class="sv-source">La Nacion</span>
+                    <a class="sv-title" href="https://www.lanacion.com.ar/el-mundo/frentes-en-juego-que-negocian-estados-unidos-e-iran-en-pakistan-nid11042026/" target="_blank">Frentes en juego: qué negocian Estados Unidos e Irán en Pakistán</a>
                 </div>
                 <div class="story-variant">
-                    <span class="sv-source">El Destape</span>
-                    <a class="sv-title" href="https://www.eldestapeweb.com/tag/elecciones-en-estados-unidos" target="_blank">Elecciones en Estados Unidos</a>
+                    <span class="sv-source">Clarin</span>
+                    <a class="sv-title" href="https://www.clarin.com/mundo/halcon-persa-yerno-trump-negociacion-clave-estados-unidos-iran-pakistan_0_QHYH4JQbRE.html" target="_blank">Del &quot;halcón&quot; persa al yerno de Trump, quién es quién en la negociación clave de Estados Unidos e Irán en Pakistán</a>
                 </div>
                 <div class="story-variant">
                     <span class="sv-source">Infobae</span>
-                    <a class="sv-title" href="https://www.infobae.com/america/mundo/2026/04/12/en-vivo-alto-el-fuego-entre-estados-unidos-e-iran/" target="_blank">Estados Unidos
-Hace 30 minutos</a>
-                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay</div>
-                <div class="story-variant">
-                    <span class="sv-source">El Pais UY</span>
-                    <a class="sv-title" href="https://www.elpais.com.uy/mundo/estados-unidos-e-iran-cierran-negociacion-sin-acuerdo-de-paz-y-acusandose-mutuamente-del-fracaso" target="_blank">Estados Unidos e Irán cierran negociación sin acuerdo de paz y acusándose mutuamente del fracaso</a>
+                    <a class="sv-title" href="https://www.infobae.com/america/mundo/2026/04/11/el-regimen-de-iran-planteo-a-pakistan-la-necesidad-de-un-alto-el-fuego-integro-que-tambien-incluya-al-libano/" target="_blank">Negociaciones Irán Estados Unidos</a>
                 </div>
                 <div class="story-variant">
-                    <span class="sv-source">La Diaria</span>
-                    <a class="sv-title" href="https://ladiaria.com.uy/mundo/articulo/2026/4/brasil-y-estados-unidos-por-una-nueva-estrategia-para-las-tierras-raras-y-la-ia/" target="_blank">Brasil y Estados Unidos: por una nueva estrategia para las tierras raras y la IA</a>
+                    <span class="sv-source">Ambito</span>
+                    <a class="sv-title" href="https://www.ambito.com/mundo/eeuu-asegura-que-envio-dos-buques-guerra-comenzar-desminar-el-estrecho-ormuz-comenzar-n6265574" target="_blank">EEUU asegura que envió dos buques de guerra para comenzar a desminar el estrecho de Ormuz para comenzar</a>
+                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">Subrayado</span>
+                    <a class="sv-title" href="https://www.subrayado.com.uy/estados-unidos-pakistan-e-iran-llevan-cabo-negociaciones-trilaterales-n1004892" target="_blank">Estados Unidos, Pakistán e Irán llevan a cabo negociaciones trilaterales</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">El Pais UY</span>
+                    <a class="sv-title" href="https://www.elpais.com.uy/mundo/estados-unidos-e-iran-negocian-en-pakistan-una-posible-salida-de-la-guerra-de-medio-oriente" target="_blank">&quot;Dialogan directamente&quot;: Estados Unidos e Irán negocian en Pakistán una posible salida de la guerra</a>
                 </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
                 <div class="story-variant">
                     <span class="sv-source">ABC Color</span>
-                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/12/la-delegacion-de-iran-abandona-pakistan-tras-el-fin-de-la-reunion-sin-acuerdo-con-ee-uu/" target="_blank">La delegación de Irán abandona Pakistán tras el fin de la reunión sin acuerdo con EE. UU.</a>
+                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/11/iran-desmiente-al-centcom-y-niega-presencia-de-buques-estadounidenses-en-estrecho-de-ormuz/" target="_blank">Irán niega presencia de buques estadounidenses en estrecho de Ormuz</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">2</span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span> <span class="badge" style="background:#7d3c98;color:white">POL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
+            <span class="story-sources">4 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
+        </div>
+        <div class="story-title">Reino Unido frena entrega de Chagos a Mauricio por falta de respaldo EE.UU</div>
+        <div class="story-summary">The UK suspended the handover of the Chagos Islands to Mauritius on May 25, 2025, citing lack of U.S. support, despite a 2019 ICJ recommendation. The archipelago, home to the Diego García military base shared with the U.S., was to be transferred under a 99-year lease agreement. The decision follows criticism from former U.S. President Donald Trump, who called the plan a &#x27;stupidity&#x27; in recent months.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>The UK had accepted a 2019 International Court of Justice ruling recommending transfer of Chagos sovereignty to Mauritius.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
+                <div class="story-variant">
+                    <span class="sv-source">Clarin</span>
+                    <a class="sv-title" href="https://www.clarin.com/mundo/furia-trump-reino-unido-dejo-suspenso-entrega-islas-chagos-base-militar-clave-medio-oriente_0_boW3zkJ76J.html" target="_blank">Tras la furia de Trump, Reino Unido dejó en suspenso la entrega de las islas Chagos, con una base militar clave para Medio Oriente</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">La Nacion</span>
+                    <a class="sv-title" href="https://www.lanacion.com.ar/el-mundo/reino-unido-frena-la-entrega-de-las-islas-chagos-sede-de-una-base-militar-clave-por-la-oposicion-de-nid11042026/" target="_blank">Reino Unido frena la entrega de las islas Chagos, sede de una base militar clave, por la oposición de EE.UU</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">Pagina 12</span>
+                    <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/11/el-reino-unido-suspendio-la-restitucion-de-chagos-a-mauricio/" target="_blank">El Reino Unido suspendió la restitución de Chagos a Mauricio</a>
+                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">ABC Color</span>
+                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/11/reino-unido-pausa-el-acuerdo-para-entregar-islas-chagos-a-mauricio-tras-oposicion-de-trump/" target="_blank">Reino Unido pausa el acuerdo para entregar islas Chagos a Mauricio tras oposición de Trump</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">3</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span> <span class="sub-badge">Electoral</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Elecciones en Perú bajo clima de incertidumbre y descontento</div>
+        <div class="story-summary">Peruvians are heading to the polls amid widespread confusion and frustration with politicians. The elections are taking place under a climate of uncertainty and growing discontent toward the political class. The process deep societal divisions and skepticism toward traditional leadership.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Peru has experienced political instability since 2016, with five presidents in seven years and frequent congressional crises.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">ABC Color</span>
+                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/11/los-peruanos-viven-las-elecciones-con-confusion-incertidumbre-y-hartazgo-hacia-politicos/" target="_blank">Los peruanos viven las elecciones con confusión, incertidumbre y hartazgo hacia políticos</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">Ultima Hora</span>
+                    <a class="sv-title" href="https://www.ultimahora.com/entre-la-incertidumbre-y-hartazgo-hacia-politicos-peru-se-prepara-para-sus-elecciones" target="_blank">Entre la incertidumbre y hartazgo hacia políticos, Perú se prepara para sus elecciones</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">4</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span> <span class="sub-badge">Electoral</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Peruanos en Argentina votan en elecciones 2026</div>
+        <div class="story-summary">Peruvian citizens in Argentina are eligible to vote in the 2026 Peruvian elections. The voting process, candidates, and electoral system are outlined for overseas voters. Registration and participation details are being clarified for the upcoming presidential race.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Peruvian citizens abroad have participated in elections since 2011, with voting rights extended to those registered in the electoral roll.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
+                <div class="story-variant">
+                    <span class="sv-source">La Nacion</span>
+                    <a class="sv-title" href="https://www.lanacion.com.ar/el-mundo/elecciones-en-peru-quienes-estan-habilitados-para-votar-en-la-argentina-nid11042026/" target="_blank">Elecciones en Perú: quiénes están habilitados para votar en la Argentina</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">El Destape</span>
+                    <a class="sv-title" href="https://www.eldestapeweb.com/internacionales/peru/elecciones-en-peru-quienes-son-los-candidatos-a-presidente-202641114040" target="_blank">Elecciones en Perú: quiénes son los candidatos a presidente</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">5</span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
+            <span class="story-sources">4 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
+        </div>
+        <div class="story-title">Anthony Griffin apuñala a tres en Grand Central y muere al ser abatido</div>
+        <div class="story-summary">A 44-year-old man, Anthony Griffin, stabbed at least three people at New York City&#x27;s Grand Central subway station on Saturday morning around 9:40 AM local time. Griffin, who arrived via the 7 train from Queens, attacked passengers on multiple platforms before being fatally shot by police after allegedly charging at officers with a machete. The victims were hospitalized with non-life-threatening injuries.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>New York City&#x27;s subway system, one of the world&#x27;s busiest, has faced ongoing challenges with public safety and mental health crises in recent years.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
+                <div class="story-variant">
+                    <span class="sv-source">Pagina 12</span>
+                    <a class="sv-title" href="https://www.pagina12.com.ar/2026/04/11/apunalo-a-tres-personas-en-la-estacion-grand-central-del-metro-de-nueva-york-y-fue-abatido/" target="_blank">Apuñaló a tres personas en la estación Grand Central del metro de Nueva York y fue abatido</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">La Nacion</span>
+                    <a class="sv-title" href="https://www.lanacion.com.ar/el-mundo/un-hombre-apunalo-a-tres-personas-en-el-subte-en-nueva-york-y-fue-abatido-por-la-policia-nid11042026/" target="_blank">Un hombre apuñaló a tres personas en el subte en Nueva York y fue abatido por la policía</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">Clarin</span>
+                    <a class="sv-title" href="https://www.clarin.com/mundo/conmocion-nueva-york-policia-mato-hombre-apunalo-varias-personas-subte_0_7w9xR7n8l4.html" target="_blank">Conmoción en Nueva York: la Policía mató a un hombre que apuñaló a varias personas en el subte</a>
+                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">ABC Color</span>
+                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/11/la-policia-mata-a-un-hombre-que-apunalo-a-varias-personas-en-el-metro-de-nueva-york/" target="_blank">La policía mata a un hombre que apuñaló a varias personas en el metro de Nueva York</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">6</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span> <span class="sub-badge">Electoral</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Belmont y Fujimori empatan con 10.9% y 10.8% en encuestas</div>
+        <div class="story-summary">Peruvian businessman and former Lima mayor Ricardo Belmont (Obras) and right-wing candidate Keiko Fujimori (Fuerza Popular) are tied in polls at 10.9% and 10.8% respectively ahead of Sunday’s elections. Belmont, aged 80 and self-described as humanist, has surged as an anti-establishment figure despite his political background. Fujimori, daughter of former president Alberto Fujimori, maintains stable support.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Peru holds presidential elections every five years under its constitutional framework established in 1993.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">El Pais UY</span>
+                    <a class="sv-title" href="https://www.elpais.com.uy/mundo/elecciones-en-peru-ricardo-belmont-la-gran-sorpresa-encabeza-encuestas-junto-a-keiko-fujimori" target="_blank">Elecciones en Perú: Ricardo Belmont, la gran sorpresa, encabeza encuestas junto a Keiko Fujimori</a>
+                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">ABC Color</span>
+                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/11/belmont-la-gran-sorpresa-de-las-elecciones-de-peru-encabeza-encuestas-junto-a-fujimori/" target="_blank">Belmont, la gran sorpresa de las elecciones de Perú, encabeza encuestas junto a Fujimori</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">7</span>
+            <span class="badge" style="background:#7d3c98;color:white">POL</span> <span class="sub-badge">Electoral</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Harris no descarta postularse en 2028</div>
+        <div class="story-summary">Kamala Harris, former U.S. vice president and 2024 Democratic presidential nominee, suggested she may run again in 2028 during a public event in New York on Friday. Speaking at an event hosted by the National Action Network (NAN), Harris stated she is considering a potential 2028 candidacy to succeed Donald Trump. She previously served as vice president under Joe Biden from 2021 to 2025 after being his running mate in 2020.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Harris served as U.S. vice president from 2021 to 2025 under President Joe Biden after being his running mate in the 2020 election.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
+                <div class="story-variant">
+                    <span class="sv-source">El Destape</span>
+                    <a class="sv-title" href="https://www.eldestapeweb.com/internacionales/elecciones-en-estados-unidos/kamala-harris-podria-ir-de-nuevo-por-la-presidencia-en-2028-lo-estoy-pensando-2026411142440" target="_blank">Kamala Harris podría ir de nuevo por la presidencia en 2028: &quot;Lo estoy pensando&quot;</a>
+                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">Ultima Hora</span>
+                    <a class="sv-title" href="https://www.ultimahora.com/harris-sugiere-una-posible-candidatura-a-las-presidenciales-2028-lo-estoy-pensando" target="_blank">Harris sugiere una posible candidatura a las presidenciales 2028: “Lo estoy pensando”</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">8</span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
+            <span class="story-sources">3 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
+        </div>
+        <div class="story-title">Irán y EE.UU. inician negociaciones de paz en sede neutral</div>
+        <div class="story-summary">Iran and the United States held peace negotiations marked by mutual distrust. The talks took place in a neutral location. No further details on outcomes were disclosed.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>The U.S. and Iran have engaged in indirect diplomacy through intermediaries since the 2015 nuclear deal collapse in 2018.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">La Nacion PY</span>
+                    <a class="sv-title" href="http://www.lanacion.com.py/mundo/2026/04/11/iran-y-ee-uu-celebran-negociacion-de-paz-marcada-por-la-desconfianza-mutua/" target="_blank">Irán y EE. UU. celebran negociación de paz marcada por la desconfianza mutua</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">Ultima Hora</span>
+                    <a class="sv-title" href="https://www.ultimahora.com/iran-y-eeuu-celebran-negociacion-de-paz-marcada-por-la-desconfianza-mutua" target="_blank">Irán y EEUU celebran negociación de paz marcada por la desconfianza mutua</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">Hoy</span>
+                    <a class="sv-title" href="https://www.hoy.com.py/mundo/2026/04/11/iran-y-eeuu-celebran-negociacion-de-paz-marcada-por-la-desconfianza-mutua" target="_blank">Irán y EEUU celebran negociación de paz marcada por la desconfianza mutua</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">9</span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span> <span class="sub-badge">Conflictos</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
+            <span class="story-sources">3 sources <span class="coverage-dots"><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span><span class="cov-dot" style="background:#d4a800"></span></span></span>
+        </div>
+        <div class="story-title">España cita a encargado de Israel por quemar efigie de Netanyahu</div>
+        <div class="story-summary">Spain summoned Israel&#x27;s chargé d&#x27;affaires after a protest in which a Netanyahu effigy was burned. The incident occurred during a demonstration in a Spanish town. Israel condemned the act as antisemitic and demanded an explanation.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>Tensions between Spain and Israel have escalated amid ongoing protests in Spain over Israel’s military actions in Gaza.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
+                <div class="story-variant">
+                    <span class="sv-source">Clarin</span>
+                    <a class="sv-title" href="https://www.clarin.com/mundo/muneco-netanyahu-prendido-fuego-acida-respuesta-nueva-escalada-tension-espana-israel_0_w0b3KISJzV.html" target="_blank">Un muñeco de Netanyahu prendido fuego y una ácida respuesta: nueva escalada de tensión entre España e Israel</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">El Destape</span>
+                    <a class="sv-title" href="https://www.eldestapeweb.com/internacionales/iran/israel-convoca-a-encargada-de-negocios-de-espana-por-quema-de-muneco-con-imagen-de-netanyahu-2026411171054" target="_blank">Israel convoca a encargada de negocios de España por quema de muñeco con imagen de Netanyahu</a>
+                </div></div><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">ABC Color</span>
+                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/11/el-pueblo-que-quemo-un-muneco-de-netanyahu-replica-a-israel-que-no-es-antisemita/" target="_blank">El pueblo que quemó un muñeco de Netanyahu replica a Israel que no es antisemita</a>
+                </div></div></div>
+    </div>
+    <div class="story">
+        <div class="story-header">
+            <span class="story-num">10</span>
+            <span class="badge" style="background:#1a6fa3;color:white">INTL</span> <span class="sub-badge">Conflictos</span>  <img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY">
+            <span class="story-sources">2 sources <span class="coverage-dots"><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span><span class="cov-dot" style="background:rgba(0,48,73,0.35)"></span></span></span>
+        </div>
+        <div class="story-title">Ataque en frontera rusa mata a pareja antes de tregua de Pascua</div>
+        <div class="story-summary">A married couple died in a border region of Russia in an attack that occurred before the Easter truce declared by Russia and Ukraine. The ceasefire took effect on April 1, 2024. The incident took place in a conflict zone near the Ukrainian border.</div>
+        <div class="story-context"><span class="ctx-label">Context</span>The Easter truce was declared by Russia and Ukraine following months of intense fighting in the region.</div>
+        <div class="story-body"><div class="country-group"><div class="cg-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+                <div class="story-variant">
+                    <span class="sv-source">ABC Color</span>
+                    <a class="sv-title" href="https://www.abc.com.py/internacionales/2026/04/12/muere-un-matrimonio-en-region-fronteriza-de-rusia-en-ataque-anterior-a-la-tregua-pascual/" target="_blank">Muere un matrimonio en región fronteriza de Rusia en ataque anterior a la tregua pascual</a>
+                </div>
+                <div class="story-variant">
+                    <span class="sv-source">Ultima Hora</span>
+                    <a class="sv-title" href="https://www.ultimahora.com/entra-en-vigor-la-tregua-pascual-declarada-por-rusia-y-ucrania" target="_blank">Entra en vigor la tregua pascual declarada por Rusia y Ucrania</a>
                 </div></div></div>
     </div></div>
     
@@ -1514,33 +1318,92 @@ Hace 30 minutos</a>
 
     <section id="tab-glossary" class="tab-panel" role="tabpanel">
         <div class="top-story-line">
-            <span class="ts-label">Who's Who · Cono Sur</span>
-            <div class="ts-title">People most prominently mentioned across the region's press in this cycle.</div>
+            <span class="ts-label">Actores Clave · Cono Sur</span>
+            <div class="ts-title">People and institutions most repeatedly mentioned across the region's press in this cycle.</div>
         </div>
-        <p class="sec-desc">Names extracted automatically from today's headlines. Roles and biographical lines are AI-generated factual context, not editorial commentary — verify before citing.</p>
+        <p class="sec-desc">Entities are extracted automatically from today's headlines and ranked with mention count plus confidence signals. Bios are factual context, not editorial commentary.</p>
         
+    <div class="sec-head">Who&apos;s Who</div>
+    <p class="sec-desc">People appearing repeatedly across the region&apos;s press. Cards show mention count, confidence, and the matching basis used to identify them.</p>
+    
         <div class="gloss-section">
             <div class="gloss-section-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
             <div class="gloss-grid">
             <div class="gloss-card">
-                <div class="gloss-name">Javier Milei</div>
-                <div class="gloss-role">President of Argentina</div>
-                <div class="gloss-bio">Libertarian economist, president since December 2023, leader of La Libertad Avanza.</div>
+                <div class="gloss-name">Javier Gerardo Milei</div>
+                <div class="gloss-role">Presidente de la Nación</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">8 menciones</span>
+                    <span class="meta-pill">Confianza Alta</span>
+                    <span class="meta-pill">Single Alias</span>
+                </div>
+            
+                <div class="gloss-bio">Economista y político libertario. Presidente desde diciembre 2023. Fundador de La Libertad Avanza. Impulsa un programa de ajuste fiscal drástico, desregulación y apertura económica. Figura de la nueva derecha global.</div>
             </div>
             <div class="gloss-card">
-                <div class="gloss-name">Karina Milei</div>
-                <div class="gloss-role">General Secretary of the Presidency</div>
-                <div class="gloss-bio">Sister of Javier Milei and his closest political operator, leads internal party organization of LLA.</div>
+                <div class="gloss-name">Mauricio Macri</div>
+                <div class="gloss-role">Ex Presidente / Presidente del PRO / Presidente FIFA</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">2 menciones</span>
+                    <span class="meta-pill">Confianza Alta</span>
+                    <span class="meta-pill">Multi Alias</span>
+                </div>
+            
+                <div class="gloss-bio">Ex presidente (2015-2019). Lidera el PRO. Presidente de la FIFA desde 2024. Figura central de la centroderecha no libertaria.</div>
+            </div>
+            <div class="gloss-card">
+                <div class="gloss-name">Máximo Kirchner</div>
+                <div class="gloss-role">Diputado Nacional / Presidente PJ Santa Cruz</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">2 menciones</span>
+                    <span class="meta-pill">Confianza Alta</span>
+                    <span class="meta-pill">Multi Alias</span>
+                </div>
+            
+                <div class="gloss-bio">Ver ARG-173 (batch principal). Como presidente del PJ y jefe del bloque K en Diputados, es la figura legislativa opositora más seguida.</div>
+            </div>
+            <div class="gloss-card">
+                <div class="gloss-name">Gustavo Costas</div>
+                <div class="gloss-role">Ex DT Racing Club / Campeón Copa Sudamericana 2024</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">2 menciones</span>
+                    <span class="meta-pill">Confianza Media</span>
+                    <span class="meta-pill">Single Alias</span>
+                </div>
+            
+                <div class="gloss-bio">Director técnico. Condujo a Racing Club al título de la Copa Sudamericana 2024 venciendo al Cruzeiro en Asunción. Figura del año en el fútbol de clubes argentino.</div>
             </div>
             <div class="gloss-card">
                 <div class="gloss-name">Manuel Adorni</div>
-                <div class="gloss-role">Presidential Spokesperson of Argentina</div>
-                <div class="gloss-bio">Economist, daily presidential spokesperson and one of the most visible voices of the Milei administration.</div>
-            </div>
+                <div class="gloss-role">Jefe de Gabinete de Ministros</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">2 menciones</span>
+                    <span class="meta-pill">Confianza Media</span>
+                    <span class="meta-pill">Single Alias</span>
+                </div>
+            
+                <div class="gloss-bio">Periodista y economista. Fue vocero presidencial hasta noviembre 2025. Asumió como Jefe de Gabinete el 4 de noviembre de 2025, reemplazando a Guillermo Francos. Firma decretos junto al ministro del Interior.</div>
+            </div></div>
+        </div>
+        <div class="gloss-section">
+            <div class="gloss-section-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1fa-1f1fe.png" alt="UY"> Uruguay</div>
+            <div class="gloss-grid">
             <div class="gloss-card">
-                <div class="gloss-name">Patricia Bullrich</div>
-                <div class="gloss-role">Minister of Security of Argentina</div>
-                <div class="gloss-bio">Former PRO president and 2023 presidential candidate, security minister since December 2023.</div>
+                <div class="gloss-name">Sergio Israel</div>
+                <div class="gloss-role">Periodista / Autor / Investigación</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">14 menciones</span>
+                    <span class="meta-pill">Confianza Alta</span>
+                    <span class="meta-pill">Last Name</span>
+                </div>
+            
+                <div class="gloss-bio">Periodista de investigación uruguayo. Autor de libros sobre el poder político y económico en Uruguay. Figura del periodismo de largo aliento.</div>
             </div></div>
         </div>
         <div class="gloss-section">
@@ -1548,15 +1411,118 @@ Hace 30 minutos</a>
             <div class="gloss-grid">
             <div class="gloss-card">
                 <div class="gloss-name">Pedro Alliana</div>
-                <div class="gloss-role">Vice President of Paraguay</div>
-                <div class="gloss-bio">ANR politician, former president of the Colorado Party, vice president since August 2023.</div>
-            </div>
-            <div class="gloss-card">
-                <div class="gloss-name">Horacio Cartes</div>
-                <div class="gloss-role">Former President of Paraguay, ANR Honor Colorado Leader</div>
-                <div class="gloss-bio">Tobacco businessman, president of Paraguay 2013-2018, leads the Honor Colorado faction of the ANR.</div>
+                <div class="gloss-role">Vicepresidente / Presidente de la Cámara de Diputados</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">3 menciones</span>
+                    <span class="meta-pill">Confianza Media</span>
+                    <span class="meta-pill">Last Name</span>
+                </div>
+            
+                <div class="gloss-bio">Político del Partido Colorado. Vicepresidente desde agosto 2023. Figura de la derecha colorada vinculada al sector agricolaganadero.</div>
             </div></div>
         </div>
+        <div class="gloss-section">
+            <div class="gloss-section-header"> International</div>
+            <div class="gloss-grid">
+            <div class="gloss-card">
+                <div class="gloss-name">Donald Trump</div>
+                <div class="gloss-role">Presidente de EE.UU.</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">13 menciones</span>
+                    <span class="meta-pill">Confianza Alta</span>
+                    <span class="meta-pill">Last Name</span>
+                </div>
+            
+                <div class="gloss-bio">Ver ARG-582. Su regreso a la Casa Blanca en enero 2025 es el hecho político internacional de mayor impacto para Argentina: aceleró el acuerdo con el FMI, reforzó la posición de Milei y reorientó la política exterior arg…</div>
+            </div>
+            <div class="gloss-card">
+                <div class="gloss-name">Benjamin Netanyahu</div>
+                <div class="gloss-role">Primer Ministro de Israel</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">3 menciones</span>
+                    <span class="meta-pill">Confianza Media</span>
+                    <span class="meta-pill">Last Name</span>
+                </div>
+            
+                <div class="gloss-bio">Primer ministro de Israel. El conflicto Gaza-Israel desde octubre 2023 fue seguido con enorme atención en Argentina, que tiene la mayor comunidad judía de América Latina. Figura de debate permanente en medios argentinos.</div>
+            </div>
+            <div class="gloss-card">
+                <div class="gloss-name">Kamala Harris</div>
+                <div class="gloss-role">Ex Vicepresidenta / Candidata presidencial 2024</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">2 menciones</span>
+                    <span class="meta-pill">Confianza Alta</span>
+                    <span class="meta-pill">Full Name</span>
+                </div>
+            
+                <div class="gloss-bio">Vicepresidenta de Biden. Candidata presidencial demócrata en 2024. Derrotada por Trump. Figura de la política estadounidense de relevancia para América Latina.</div>
+            </div>
+            <div class="gloss-card">
+                <div class="gloss-name">Alberto Fujimori</div>
+                <div class="gloss-role">Ex Presidente Perú (fallecido 2024)</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">2 menciones</span>
+                    <span class="meta-pill">Confianza Media</span>
+                    <span class="meta-pill">Last Name</span>
+                </div>
+            
+                <div class="gloss-bio">Ex presidente de Perú (1990-2000). Preso por crímenes de lesa humanidad. Fue liberado por decisión del Tribunal Constitucional en 2023 y falleció en septiembre 2024.</div>
+            </div>
+            <div class="gloss-card">
+                <div class="gloss-name">Denzel Washington</div>
+                <div class="gloss-role">Actor / Premio Oscar</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">2 menciones</span>
+                    <span class="meta-pill">Confianza Media</span>
+                    <span class="meta-pill">Last Name</span>
+                </div>
+            
+                <div class="gloss-bio">Actor norteamericano. Dos veces ganador del Oscar. Una de las figuras más respetadas de Hollywood. Sus películas son consumidas masivamente en Argentina.</div>
+            </div></div>
+        </div>
+
+    <div class="sec-head">Institutions To Watch</div>
+    <p class="sec-desc">Parties, ministries, state companies, blocs, and labor federations that appeared repeatedly in this cycle.</p>
+    
+        <div class="gloss-section">
+            <div class="gloss-section-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1e6-1f1f7.png" alt="AR"> Argentina</div>
+            <div class="gloss-grid">
+            <div class="gloss-card">
+                <div class="gloss-name">BCRA</div>
+                <div class="gloss-role">Central bank</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">4 menciones</span>
+                    <span class="meta-pill">Confianza Alta</span>
+                    <span class="meta-pill">Org Name</span>
+                </div>
+            
+                <div class="gloss-bio">Central Bank of the Argentine Republic.</div>
+            </div></div>
+        </div>
+        <div class="gloss-section">
+            <div class="gloss-section-header"><img class="flag" src="https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/72x72/1f1f5-1f1fe.png" alt="PY"> Paraguay</div>
+            <div class="gloss-grid">
+            <div class="gloss-card">
+                <div class="gloss-name">ANDE</div>
+                <div class="gloss-role">State electricity company</div>
+                
+                <div class="gloss-meta">
+                    <span class="meta-pill">2 menciones</span>
+                    <span class="meta-pill">Confianza Alta</span>
+                    <span class="meta-pill">Org Name</span>
+                </div>
+            
+                <div class="gloss-bio">National Electricity Administration of Paraguay.</div>
+            </div></div>
+        </div>
+    
     </section>
 
 </div>
@@ -1580,7 +1546,7 @@ Hace 30 minutos</a>
 
 <div class="doc-footer">
     <span>MEDIA MONITOR — Argentina, Paraguay &amp; Uruguay</span>
-    <span>2026-04-12 08:09 | 839 articles, 14 sources</span>
+    <span>2026-04-12 09:53 | 616 articles, 17 sources</span>
 </div>
 
 </body>
