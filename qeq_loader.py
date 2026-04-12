@@ -89,6 +89,12 @@ def _clean_bio(text: str, max_len: int = 220) -> str:
     if not text:
         return ""
     s = re.sub(r"\s+", " ", str(text).strip())
+    # Strip internal cross-reference prefixes like "Ver ARG-173 (batch principal)."
+    s = re.sub(
+        r"^Ver\s+(?:[A-Z]{2,4}[-‑]?\d{1,4}|#\d{1,4})"
+        r"(?:\s*\([^)]*\))?\.?\s*",
+        "", s,
+    ).strip()
     if len(s) > max_len:
         # Cut at last sentence boundary before the limit, else hard cut.
         cut = s[: max_len - 1]

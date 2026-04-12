@@ -55,7 +55,9 @@ _IRRELEVANT_PATTERNS = [
     r"\bmbeyu\b",
     # Sports match results that bypass the "deportes" keyword
     r"\b\d+\s*-\s*\d+\b.*\b(gol|penales?|apertura|clausura|fecha\s+\d)\b",
-    r"\bcampeon\b",
+    # "campeón" solo en contexto deportivo — evitar bloquear metáforas económicas
+    r"\bcampeon\b.*\b(liga|torneo|copa|campeonato|apertura|clausura|partido|mundial)\b",
+    r"\b(liga|torneo|copa|campeonato|apertura|clausura)\b.*\bcampeon\b",
     r"\bse juega\b.*\b(primer|segundo)\b",
     r"\bdebut[oó]?\b.*\bprimera\b",
     r"\bgol de\b",
@@ -67,6 +69,26 @@ _IRRELEVANT_PATTERNS = [
     r"\bdeportivo maldonado\b",
     r"\bciclismo\b",
     r"\b\d+\s*fotos?\b",
+    # Sports live match results
+    r"\bvs\.?\s.*(en vivo|en directo)",
+    r"\ben vivo\b.*\bvs\.?\b",
+    # Daily price tickers — repetitive noise with no editorial value
+    r"\bdolar hoy\b",
+    r"\bdolar blue hoy\b",
+    r"\bdolar ccl hoy\b",
+    r"\bdolar mep hoy\b",
+    r"\beuro hoy\b",
+    r"\breal hoy\b",
+    r"\bdolar.*a cuanto cotiza",
+    r"\bcotizacion del?.* dolar",
+    r"\besta es la cotizacion\b",
+    r"\btipo de cambio hoy\b",
+    r"\bprecio del dolar hoy\b",
+    r"\bcotizacion del?.*(miercoles|lunes|martes|jueves|viernes|sabado|domingo)",
+    # Crypto price tickers
+    r"\b(bitcoin|ethereum|cripto)\b.*\bhoy\b",
+    r"\b(bitcoin|ethereum)\b.*cotizacion",
+    r"\bcotizacion.*\b(bitcoin|ethereum)\b",
 ]
 
 _CATEGORY_KEYWORDS = {
@@ -81,10 +103,24 @@ _CATEGORY_KEYWORDS = {
         ("corte suprema", 1.8), ("fiscal", 1.6), ("juez", 1.6),
         ("milei", 2.8), ("orsi", 2.8), ("pena", 2.5), ("cartes", 2.1),
         ("lacalle", 2.2), ("frente amplio", 2.0), ("honor colorado", 1.8),
+        # QA corpus fixes — keywords faltantes detectados en test_edge_corpus.py
+        ("presidencial", 2.2),   # "gira presidencial", "acuerdo presidencial"
+        ("candidat", 2.0),       # matchea "candidato", "candidatura" via \bcandida\w*
+        ("legislativa", 2.0),    # "elecciones legislativas", "reforma legislativa"
+        ("kirchner", 2.2),       # Máximo (activo) + referencias históricas
+        ("peronismo", 1.8),
+        ("kirchnerismo", 1.8),
+        ("condena", 2.0),        # juicios a funcionarios / empresarios
+        ("lavado", 1.8),         # lavado de dinero en contexto político-judicial
+        ("imputado", 1.8),
+        ("asesinato", 1.8),      # crímenes con connotación política/policial
+        ("conmemor", 1.5),       # conmemoran, conmemoración de hechos históricos
+        ("migracion", 1.6),      # visas, flujos migratorios como política de Estado
     ],
     "economia": [
         ("economia", 3.0), ("inflacion", 3.0), ("dolar", 3.0),
-        ("banco central", 2.8), ("bcra", 2.8), ("fmi", 2.7),
+        ("banco central", 2.8), ("bcra", 2.8), ("fmi", 3.2),
+        ("fondo monetario", 3.2),
         ("deuda", 2.5), ("reservas", 2.3), ("salario", 2.0),
         ("empleo", 2.0), ("mercado", 1.8), ("export", 2.2),
         ("import", 2.2), ("inversion", 2.1), ("impuesto", 2.1),
@@ -94,9 +130,13 @@ _CATEGORY_KEYWORDS = {
         ("licitacion", 1.6), ("constructoras", 1.8), ("obras", 1.5),
         ("yerbatero", 2.4), ("sector yerbatero", 2.6), ("ganadera", 1.7),
         ("agronegocios", 1.8), ("mef", 1.8), ("petropar", 2.0),
+        ("arancel", 2.2),
         ("mercosur", 1.8), ("mercados", 1.8), ("produccion", 1.8),
         ("productores", 1.8), ("innovacion", 1.5), ("exoneracion", 1.8),
         ("multas", 1.4), ("laborales", 1.7), ("obligaciones laborales", 2.4),
+        # QA corpus fixes
+        ("deficit", 2.2),        # "déficit cero", "meta de déficit"
+        ("superavit", 1.8),
     ],
     "internacional": [
         ("estados unidos", 3.0), ("eeuu", 2.8), ("china", 2.7),
@@ -108,6 +148,14 @@ _CATEGORY_KEYWORDS = {
         ("cooperacion", 1.7), ("conflicto", 1.6), ("guerra", 2.2),
         ("oriente medio", 3.0), ("visita oficial", 2.1), ("regional", 1.4),
         ("panama", 1.1), ("japon", 1.1), ("taiwan", 1.1), ("argelia", 1.1),
+        # QA corpus fixes — países latinoamericanos ausentes
+        ("peru", 1.8),
+        ("bolivia", 1.8),
+        ("venezuela", 1.8),
+        ("colombia", 1.5),
+        ("brasil", 1.5),    # ⚠️ monitorear: PY/UY lo mencionan en contexto doméstico
+        ("cuba", 1.5),
+        ("nicaragua", 1.5),
     ],
 }
 
@@ -122,26 +170,152 @@ _SUBTOPIC_RULES = {
         "macroeconomia": [
             "inflacion", "dolar", "reservas", "banco central", "fmi",
             "deuda", "tasas", "presupuesto", "deficit",
+            # --- nuevos ---
+            "riesgo pais", "bonos", "cepo", "tipo de cambio", "brecha",
+            "recaudacion", "fiscal", "pbi", "superavit", "letras",
+            "depositos", "crawling peg", "base monetaria", "emision",
+            "indec", "costo de vida", "canasta basica",
+            "gravamen", "impuesto", "tributario", "ingresos brutos",
+            "credito", "hipotecario", "prestamo", "financiamiento",
+            "tasa de interes", "plazo fijo", "rendimiento", "bono",
+            "banco", "bancos", "sistema financiero",
         ],
-        "energia": ["energia", "gas", "petroleo", "combustible", "ypf", "petropar"],
-        "agro": ["yerbatero", "ganadera", "agronegocios", "soja", "trigo", "maiz"],
-        "comercio": ["export", "import", "mercosur", "mercados", "inversion", "arancel"],
-        "obra_publica": ["constructoras", "licitacion", "obras", "mopc", "infraestructura"],
-        "empleo": ["empleo", "laborales", "salario", "trabajo", "proveedores"],
+        "energia": [
+            "energia", "gas", "petroleo", "combustible", "ypf", "petropar",
+            # --- nuevos ---
+            "vaca muerta", "nafta", "gasoil", "tarifas electricas",
+            "ande", "itaipu", "electricidad", "renovable", "eolica",
+            "solar", "generacion electrica", "oleoducto", "refineria",
+            "hidrocarburo", "ute",
+            # QA corpus fixes — frases de precio de energía (unívocas vs macro)
+            "tarifa de gas", "precio del gas", "precio del combustible",
+            "tarifa electrica", "precio de la nafta", "costo energetico",
+        ],
+        "agro": [
+            "yerbatero", "ganadera", "agronegocios", "soja", "trigo", "maiz",
+            # --- nuevos ---
+            "campo", "cosecha", "siembra", "ganaderia", "lecheria",
+            "arroz", "girasol", "carne", "frigorifico", "forestacion",
+            "agroindustria", "productores agropecuarios", "sequia",
+            "inundacion", "rural", "semilla", "fertilizante",
+        ],
+        "comercio": [
+            "export", "import", "mercosur", "mercados", "inversion", "arancel",
+            # --- nuevos ---
+            "aduana", "retenciones", "balanza comercial", "zona franca",
+            "tipo de cambio", "acuerdo comercial", "dumping", "cuota",
+            "derechos de export", "barrera comercial", "superavit comercial",
+            "intercambio comercial",
+            "ventas minoristas", "ventas mayoristas", "consumo masivo",
+            "consumo", "consumidor", "minorista", "mayorista",
+            "automotor", "patentamiento", "autos usados", "vehiculo",
+            "retail", "comercios", "supermercado", "precios al consumidor",
+        ],
+        "obra_publica": [
+            "constructoras", "licitacion", "obras", "mopc", "infraestructura",
+            # --- nuevos ---
+            "autopista", "ruta", "puente", "vialidad", "pavimentacion",
+            "saneamiento", "acueducto", "vivienda social", "plan de obras",
+            "contratista", "adjudicacion", "pliego", "peaje",
+        ],
+        "empleo": [
+            "empleo", "laborales", "salario", "trabajo", "proveedores",
+            # --- nuevos ---
+            "desempleo", "paritaria", "convenio", "sindical", "gremio",
+            "sueldo", "jubilacion", "pension", "aguinaldo", "despido",
+            "informalidad", "monotributo", "trabajadores", "huelga",
+            "pit-cnt", "cgt", "sindicato", "bps",
+        # QA corpus fixes
+        "huelga", "paro general", "huelga general",
+        ],
     },
     "politica": {
-        "ejecutivo": ["presidente", "vicepresidente", "gabinete", "gobierno", "ministro"],
-        "legislativo": ["senado", "senador", "diputado", "congreso", "parlamento", "ley"],
-        "electoral": ["eleccion", "electoral", "campana", "partido", "coalicion"],
-        "justicia": ["corte suprema", "fiscal", "juez", "tribunal", "causa"],
-        "seguridad": ["interior", "seguridad", "policia", "narco", "crimen"],
-        "social": ["salud", "educacion", "ips", "programas sociales", "asegurados"],
+        "ejecutivo": [
+            "presidente", "vicepresidente", "gabinete", "gobierno", "ministro",
+            # --- nuevos ---
+            "decreto", "dnu", "jefe de gabinete", "resolucion", "medida",
+            "funcionario", "secretario", "vocero", "portavoz",
+            "poder ejecutivo", "casa rosada", "torre ejecutiva", "palacio",
+        ],
+        "legislativo": [
+            "senado", "senador", "diputado", "congreso", "parlamento", "ley",
+            # --- nuevos ---
+            "legislatura", "proyecto de ley", "sesion", "camara", "votacion",
+            "dictamen", "comision", "plenario", "sancion", "promulgacion",
+            "veto", "quorum", "debate parlamentario", "bancada",
+            "legislador",
+        ],
+        "electoral": [
+            "eleccion", "electoral", "campana", "partido", "coalicion",
+            # --- nuevos ---
+            "interna", "primaria", "encuesta", "ballotage", "comicios",
+            "padron", "candidatura", "candidato", "voto", "urna",
+            "escrutinio", "boca de urna", "segunda vuelta", "paso",
+            "precandidato", "formula", "lista",
+        ],
+        "justicia": [
+            "corte suprema", "fiscal", "juez", "tribunal", "causa",
+            # --- nuevos ---
+            "judicial", "imputado", "procesado", "penal", "denuncia",
+            "investigacion", "expediente", "sentencia", "condena",
+            "absolucion", "recurso", "amparo", "querella", "extradicion",
+            "detencion", "prision", "carcel", "preso politico",
+            "magistrado", "fiscalia",
+        ],
+        "seguridad": [
+            "interior", "seguridad", "policia", "narco", "crimen",
+            # --- nuevos ---
+            "frontera", "gendarmeria", "prefectura", "preso", "penitenciario",
+            "homicidio", "detenido", "detencion", "femicidio", "violencia",
+            "trafico", "contrabando", "lavado", "droga", "prision",
+            "fuerza", "operativo", "allanamiento", "arma", "balacera",
+        ],
+        "social": [
+            "salud", "educacion", "ips", "programas sociales", "asegurados",
+            # --- nuevos ---
+            "pobreza", "indigencia", "vivienda", "AUH", "asignacion",
+            "plan social", "comedor", "alimentacion", "hospital",
+            "vacuna", "epidemia", "dengue", "universidad", "escuela",
+            "docente", "paro docente", "clase", "estudiantes",
+            "genero", "discapacidad", "migracion",
+            # QA corpus fixes
+            "huelga", "paro general", "huelga general", "cgt", "protesta",
+            "manifestacion", "movilizacion",
+        ],
     },
     "internacional": {
-        "diplomacia": ["bilateral", "cumbre", "embajada", "embajador", "canciller", "cooperacion"],
-        "comercio_exterior": ["mercosur", "inversion", "mercados", "comercio", "export", "import"],
-        "conflictos": ["guerra", "conflicto", "gaza", "ucrania", "israel", "rusia"],
-        "multilateral": ["onu", "oea", "g20", "g7", "union europea"],
+        "diplomacia": [
+            "bilateral", "cumbre", "embajada", "embajador", "canciller", "cooperacion",
+            # --- nuevos ---
+            "visita oficial", "acuerdo", "tratado", "relaciones",
+            "consulado", "cancilleria", "protocolo", "delegacion",
+            "dialogo", "negociacion", "alianza",
+        ],
+        "comercio_exterior": [
+            "mercosur", "inversion", "mercados", "comercio", "export", "import",
+            # --- nuevos ---
+            "arancel", "acuerdo comercial", "tlc", "zona franca",
+            "dumping", "cuota", "barrera", "ue", "union europea",
+        ],
+        "conflictos": [
+            "guerra", "conflicto", "gaza", "ucrania", "israel", "rusia",
+            # --- nuevos ---
+            "ataque", "misil", "bombardeo", "tropas", "sanciones",
+            "hamas", "hezbollah", "otan", "nato", "invasion",
+            "tregua", "alto el fuego", "muertos", "victimas", "refugiados",
+            "ofensiva", "defensa", "militar", "armas",
+            "liban", "libano", "iran", "siria", "yemen", "sudan",
+            "huti", "huthi", "ormuz", "bloqueo naval", "estrecho",
+            "franja", "cisjordania", "moscu", "kiev", "kyiv",
+        ],
+        "multilateral": [
+            "onu", "oea", "g20", "g7", "union europea",
+            # --- nuevos ---
+            "asamblea general", "consejo de seguridad", "resolucion onu",
+            "organismo", "bid", "banco mundial", "fao", "unesco",
+            "oms", "celac", "unasur", "brics", "cumbre",
+            "fmi", "fondo monetario", "ocde", "g8",
+        ],
     },
 }
 

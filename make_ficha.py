@@ -359,9 +359,9 @@ def page2(c, crop2, crop3, qr_url):
 
 def build_ficha(site_url="auparrino.github.io/media-monitos"):
     crops = prepare_crops()
-    crop1 = crops[0] if crops else None
-    crop2 = crops[1] if crops else None
-    crop3 = crops[2] if crops else None
+    crop1 = crops[0] if crops and len(crops) > 0 else None
+    crop2 = crops[1] if crops and len(crops) > 1 else None
+    crop3 = crops[2] if crops and len(crops) > 2 else None
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     c = canvas.Canvas(OUT, pagesize=A4)

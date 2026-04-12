@@ -88,7 +88,7 @@ NOISE_PATTERNS = [
     r"d[oó]lar blue hoy",
     r"d[oó]lar ccl hoy",
     r"cotizaci[oó]n del? .*d[oó]lar",
-    r"cotizaci[oó]n del? .*miércoles|lunes|martes|jueves|viernes|sábado|domingo",
+    r"cotizaci[oó]n del? .*(mi[eé]rcoles|lunes|martes|jueves|viernes|s[aá]bado|domingo)",
     r"d[oó]lar.*a cu[aá]nto cotiza",
     r"esta es la cotizaci[oó]n",
     r"tipo de cambio hoy",
@@ -105,7 +105,7 @@ NOISE_PATTERNS = [
     r"cu[aá]nto cuesta (?:disney|netflix|spotify|hbo|amazon)",
     r"colegio biling[uü]e",
     r"en vivo:?\s*(pe[nñ]arol|nacional|racing|boca|river|independiente)",
-    r"vs\.\s.*(en vivo|en directo)",
+    r"\bvs\.?\s.*(en vivo|en directo)",
     r"(apertura|clausura).*en vivo",
     r"\b\d+\s*-\s*\d+\b.*\b(gol|penales?|apertura|clausura|fecha\s+\d)\b",
     r"\b(primer|segundo)\s+tiempo\b.*\b(gol|lesion|messi|partido|empat|argen|colom|uruguay|penal)",
@@ -113,7 +113,9 @@ NOISE_PATTERNS = [
     r"\bse juega\b.*\b(primer|segundo)\b",
     r"\bdebut[oó]?\b.*\bprimera\b",
     r"\bgol de\b",
-    r"\bcampe[oó]n\b",
+    # "campeón" solo en contexto deportivo — evitar bloquear metáforas económicas
+    r"\bcampe[oó]n\b.*\b(liga|torneo|copa|campeonato|apertura|clausura|partido|mundial)\b",
+    r"\b(liga|torneo|copa|campeonato|apertura|clausura)\b.*\bcampe[oó]n\b",
     r"\bpenales\b.*\bganó\b|\bganó\b.*\bpenales\b",
     r"\bcopa libertadores\b",
     r"\bcopa am[eé]rica\b",
@@ -129,6 +131,9 @@ NOISE_PATTERNS = [
     r"\bdeportivo maldonado\b",
     r"\bbicampe[oó]n\b",
     r"\balargue\b",
+    # "ganó N a N" marcador deportivo sin guión — excluye contexto parlamentario
+    r"\bgan[oó]\b.*\b\d+\s+a\s+\d+\b(?!.*\b(congreso|senado|votaci[oó]n|sesi[oó]n|debate)\b)",
+    r"\b\d+\s+a\s+\d+\b.*\bgan[oó]\b(?!.*\b(congreso|senado|votaci[oó]n|sesi[oó]n|debate)\b)",
     # Lottery / quiniela / numbers games — routine roundups, not news
     r"\bquiniela\b",
     r"\bquini ?6\b",
@@ -143,6 +148,11 @@ NOISE_PATTERNS = [
     r"sorteo de hoy",
     r"números? ganadores?",
     r"numeros? ganadores?",
+    # Crypto / asset price tickers — routine like "dólar hoy"
+    r"\bbitcoin\b.*cotizaci[oó]n|cotizaci[oó]n.*\bbitcoin\b",
+    r"\bbitcoin\b.*cu[aá]nto vale|cu[aá]nto vale.*\bbitcoin\b",
+    r"\b(?:bitcoin|ethereum|cripto)\b.*\bhoy\b",
+    r"\b(?:bitcoin|ethereum)\b.*\$\s*[\d.,]+",
 ]
 
 def _clean_scraped_title(title: str) -> str:
@@ -201,6 +211,11 @@ STOPWORDS = {
     "candidatura", "candidato", "candidata", "elecciones", "electoral",
     "partido", "campaña", "campana", "voto", "votar", "presidencial",
     "oficialismo", "oposición", "oposicion",
+    # High-frequency proper names that appear in too many unrelated stories
+    # to discriminate events — they act like "presidente" or "gobierno".
+    "milei", "javier", "orsi", "yamandú", "yamandu",
+    "peña", "pena", "santiago",
+    "trump", "donald",
 }
 
 
@@ -243,6 +258,12 @@ def load_articles():
     df = pd.DataFrame(cleaned_rows)
     if df.empty:
         return df
+    # Deduplicate by (source, normalized title) — same article under multiple
+    # section URLs (e.g. El Destape /politica/X vs /politica/crisis/X) should
+    # appear only once. Keep the first occurrence (oldest scraped_at).
+    df["_title_key"] = df["title"].str.lower().str.replace(r"\W+", " ", regex=True).str.strip()
+    df = df.drop_duplicates(subset=["source", "_title_key"], keep="first")
+    df = df.drop(columns=["_title_key"])
     return df
 
 
@@ -251,12 +272,40 @@ def load_articles():
 def _normalize(title):
     t = title.lower()
     t = re.sub(r'[^a-záéíóúñü\s]', '', t)
-    return re.sub(r'\s+', ' ', t).strip()
+    t = re.sub(r'\s+', ' ', t).strip()
+    # Inject canonical keywords so TF-IDF sees the same term regardless of
+    # whether the article uses the acronym or the full name.
+    for phrase, canonical in _KEYWORD_ALIASES.items():
+        if phrase in t:
+            t = f"{t} {canonical}"
+    return t
 
+
+_ACRONYM_KEYWORDS = {"fmi", "onu", "oea", "bcu", "ypf", "ute", "bps", "ips",
+                      "iva", "pbi", "bcra", "mef", "usd", "bid", "otan"}
+
+# Multi-word expressions that should be collapsed to a canonical keyword
+# so articles using the full name cluster with articles using the acronym.
+_KEYWORD_ALIASES = {
+    "fondo monetario internacional": "fmi",
+    "fondo monetario": "fmi",
+    "banco central": "bcra",
+    "union europea": "ue",
+    "estados unidos": "eeuu",
+    "naciones unidas": "onu",
+}
 
 def _keywords(title):
-    words = re.findall(r'[a-záéíóúñü]+', title.lower())
-    return set(w for w in words if len(w) >= 4 and w not in STOPWORDS)
+    t = title.lower()
+    words = re.findall(r'[a-záéíóúñü]+', t)
+    base = set(w for w in words if len(w) >= 4 and w not in STOPWORDS)
+    # Include short but important acronyms (3 chars) that carry high signal
+    base |= {w for w in words if w in _ACRONYM_KEYWORDS}
+    # Expand multi-word aliases to canonical keywords
+    for phrase, canonical in _KEYWORD_ALIASES.items():
+        if phrase in t:
+            base.add(canonical)
+    return base
 
 
 def _is_noise(title):
@@ -334,6 +383,38 @@ _BRIEF_WITH_BODY_PROMPT = (
     "adjustment since December 2023.'). Do NOT speculate about consequences. "
     'If you cannot provide neutral background, return an empty string for "context".\n\n'
     "Reply with ONLY the JSON object. No markdown fences, no preamble, no commentary."
+)
+
+
+_CLUSTER_VALIDATION_PROMPT = (
+    "You are a news editor reviewing automatically grouped headlines from Argentina, "
+    "Uruguay, and Paraguay. For each numbered group below, do two things:\n\n"
+    "1. COHERENCE: Do all headlines in the group cover the EXACT SAME specific news event "
+    "(same actors, same decision, same moment)? If yes: valid=true. "
+    "If the group mixes two or more distinct events: valid=false, and provide 'split' — "
+    "a list of index sub-arrays showing how to separate them (e.g. [[0,1],[2,3]]). "
+    "If this group covers the same event as another group: provide 'merge_with' with "
+    "that group's id. A group with only 1-2 headlines should almost always be valid=true "
+    "unless clearly mismatched.\n\n"
+    "2. KEY PEOPLE: List the public figures mentioned in the group's headlines. "
+    "For each person include:\n"
+    '- "name": full name exactly as it appears (or your best reconstruction)\n'
+    '- "role": their official position or known public role. Use null if unsure — '
+    "do NOT invent or guess.\n"
+    '- "relevance": one of:\n'
+    '    "protagonist" — their decision/action/statement IS the news event\n'
+    '    "key_actor"   — directly involved but not the central figure\n'
+    '    "mentioned_only" — cited in passing, historical reference, or background\n\n'
+    "Rules:\n"
+    "- Only include people whose full name (or clear reference) appears in the headlines.\n"
+    "- Historical figures invoked symbolically are always mentioned_only.\n"
+    "- Do not split a group just because headlines have different wording — same event "
+    "covered by multiple outlets naturally uses different phrasing.\n\n"
+    "Return a JSON object with a single 'clusters' array. Each element:\n"
+    '{"id": <int>, "valid": <bool>, "split": <null or [[ints],[ints]]>, '
+    '"merge_with": <null or int>, "people": [{"name": "...", "role": "...", '
+    '"relevance": "..."}]}\n\n'
+    "Reply with ONLY the JSON object. No markdown fences, no preamble."
 )
 
 
@@ -543,12 +624,18 @@ _LASTNAME_CANONICAL = _build_lastname_prominence_map()
 _AMBIGUOUS_SHORT_LASTNAMES = {
     "cruz", "rosa", "mano", "caso", "plan", "hora", "mesa", "gato",
     "vaca", "gana", "para", "mejor", "solo", "cosa",
-    "guerra", "real", "paz", "campo", "rico", "blanco",
+    "guerra", "real", "paz", "campo", "rico", "blanco", "carrera",
     "fuerte", "franco", "pastor", "moral", "bueno", "leal",
     # Geographic / geopolitical terms that collide with person surnames:
     "israel", "washington", "costas", "lima", "roma", "santiago",
     "jordan", "georgia", "chile", "panama", "cuba", "paris",
     "leon", "valencia", "bolivar", "europa", "asia", "africa",
+    # Ultra-common Cono Sur surnames — too ambiguous for surname-only matching.
+    # Full-name and alias matches still work; only naked-surname is blocked.
+    "sanchez", "gonzalez", "rodriguez", "martinez", "fernandez",
+    "lopez", "garcia", "ramirez", "diaz", "torres", "romero",
+    "alvarez", "gutierrez", "ruiz", "flores", "gomez", "acosta",
+    "benitez", "medina", "suarez", "cabrera", "rojas", "sosa",
 }
 # NOTE: "negro" removed — it blocked Uruguay's Interior Minister Carlos Negro.
 # The prominence system (80+ = ministro) now handles disambiguation correctly.
@@ -670,6 +757,33 @@ _NON_PERSON_NAME_PATTERNS = re.compile(
 )
 
 
+# People who are deceased — should not appear in the "Who's Who" glossary
+# as current actors. They may still be mentioned in headlines (e.g. "A 15
+# años de la muerte de Kirchner") but should not get a glossary card.
+_DECEASED_PEOPLE = {
+    # Argentina
+    "nestor kirchner",       # died 2010
+    "nestor carlos kirchner",# full name as in QeQ roster
+    "hugo chavez",           # died 2013 (Venezuela, often in AR headlines)
+    "raul alfonsin",         # died 2009
+    "carlos menem",          # died 2021
+    "carlos colo menem",     # full name as in QeQ roster
+    "alberto nisman",        # died 2015
+    "hector timerman",       # died 2018
+    "jose luis cabezas",     # died 1997
+    "hermes binner",         # died 2020
+    "fernando de la rua",    # died 2019
+    # Paraguay
+    "lino cesar oviedo",     # died 2013 (plane crash)
+    # International
+    "alberto fujimori",      # died 2024 (Peru)
+    # Argentina — historical figures frequently referenced in syndical/political headlines
+    "juan domingo peron",        # died 1974 — CGT invocations, sindical history
+    "eva peron",                 # died 1952
+    "eva maria duarte de peron", # full name as may appear in QeQ roster
+}
+
+
 def _scan_titles_for_known_people(titles):
     """Return high-confidence people detected across the title corpus."""
     if not titles or not _ALL_KNOWN_PEOPLE:
@@ -747,6 +861,8 @@ def _scan_titles_for_known_people(titles):
         found.values(),
         key=lambda e: (-e["mentions"], -e["confidence"], e["name"]),
     )
+    # Filter out deceased people — they shouldn't appear as current actors
+    ranked = [r for r in ranked if _normalize_person_name(r["name"]) not in _DECEASED_PEOPLE]
     return ranked[:30]
 
 
@@ -814,47 +930,253 @@ _GLOSSARY_PROMPT = (
 )
 
 
-def _llm_extract_glossary(titles):
+def _llm_validate_and_enrich_clusters(clusters):
+    """Batch LLM pass: validate cluster coherence + identify key people per event.
+
+    Processes multi-source, non-noise clusters (up to 25) in a single LLM call.
+    Returns the (possibly restructured) cluster list with each cluster annotated
+    with 'llm_people' — a list of {name, role, relevance} dicts for protagonist
+    and key_actor figures only.
+
+    On any failure (LLM unavailable, parse error, etc.) returns clusters unchanged.
+    """
+    candidates = [cl for cl in clusters if cl.get("multi") and not cl.get("noise")][:25]
+    if not candidates:
+        return clusters
+
+    # Assign sequential IDs and build prompt body
+    id_to_cluster = {}
+    lines = []
+    for idx, cl in enumerate(candidates):
+        id_to_cluster[idx] = cl
+        cl["_validate_id"] = idx
+        titles_block = "\n".join(
+            f'  - "{art.title}"' for art in cl["articles"][:6]
+        )
+        lines.append(f"Group {idx}:\n{titles_block}")
+
+    user_msg = "\n\n".join(lines)
+    raw = _llm_chat_cascade(
+        _CLUSTER_VALIDATION_PROMPT, user_msg, json_mode=True, max_tokens=2500
+    )
+    if not raw:
+        print("[LLM-VALIDATE] No response — clusters unchanged")
+        return clusters
+
+    # Parse JSON (same defensive pattern used elsewhere in this file)
+    try:
+        text = raw.strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:json)?\s*", "", text)
+            text = re.sub(r"\s*```$", "", text)
+        s, e = text.find("{"), text.rfind("}")
+        if s == -1 or e <= s:
+            raise ValueError("no JSON object found")
+        obj = json.loads(text[s:e + 1])
+        results = obj.get("clusters") or []
+    except Exception as exc:
+        print(f"[LLM-VALIDATE] Parse error: {exc} — clusters unchanged")
+        return clusters
+
+    n_splits = 0
+    n_merges = 0
+
+    # Build a working copy so we can safely mutate the list
+    cluster_list = list(clusters)
+
+    # Process each result entry
+    # Collect merges to apply AFTER splits (safer ordering)
+    pending_merges = []
+
+    for item in results:
+        if not isinstance(item, dict):
+            continue
+        cid = item.get("id")
+        if cid not in id_to_cluster:
+            continue
+        cl = id_to_cluster[cid]
+
+        # ── Annotate people (protagonist + key_actor only) ──
+        raw_people = item.get("people") or []
+        llm_people = []
+        for p in raw_people:
+            if not isinstance(p, dict):
+                continue
+            name = (p.get("name") or "").strip()
+            role = (p.get("role") or "")
+            relevance = (p.get("relevance") or "").strip().lower()
+            if not name or relevance not in {"protagonist", "key_actor"}:
+                continue
+            llm_people.append({"name": name, "role": role or None, "relevance": relevance})
+        cl["llm_people"] = llm_people
+
+        # ── Split incoherent clusters ──
+        if not item.get("valid") and item.get("split"):
+            split_groups = item["split"]
+            if (
+                isinstance(split_groups, list)
+                and len(split_groups) >= 2
+                and all(isinstance(g, list) and len(g) > 0 for g in split_groups)
+            ):
+                all_arts = cl["articles"]
+                n_arts = len(all_arts)
+                # Validate all indices are in range
+                flat = [i for g in split_groups for i in g]
+                if len(flat) == len(set(flat)) and all(0 <= i < n_arts for i in flat):
+                    # Remove the original cluster from the list
+                    try:
+                        cluster_list.remove(cl)
+                    except ValueError:
+                        pass
+                    for sub_indices in split_groups:
+                        sub_arts = [all_arts[i] for i in sub_indices]
+                        if not sub_arts:
+                            continue
+                        sub_sources = list({a.source for a in sub_arts})
+                        sub_cats = list({a.category for a in sub_arts if a.category})
+                        sub_subs = list({a.subcategory for a in sub_arts if a.subcategory})
+                        sub_countries = list({a.country for a in sub_arts if a.country})
+                        new_cl = {
+                            "articles": sub_arts,
+                            "sources": sub_sources,
+                            "categories": sub_cats,
+                            "subcategories": sub_subs,
+                            "countries": sub_countries,
+                            "primary_subcategory": _cluster_primary_subcategory(sub_arts),
+                            "lead": sub_arts[0].title,
+                            "title": _generate_story_title(sub_arts),
+                            "summary": None,
+                            "context": None,
+                            "size": len(sub_arts),
+                            "multi": len(sub_sources) >= 2,
+                            "noise": False,
+                            "indices": set(),
+                            "llm_people": [],
+                        }
+                        cluster_list.append(new_cl)
+                    n_splits += 1
+
+        # ── Queue merges ──
+        merge_target = item.get("merge_with")
+        if isinstance(merge_target, int) and merge_target in id_to_cluster and merge_target != cid:
+            pending_merges.append((cid, merge_target))
+
+    # Apply merges (each pair at most once, smallest id absorbs largest)
+    merged_away = set()
+    for src_id, tgt_id in pending_merges:
+        src_cl = id_to_cluster.get(src_id)
+        tgt_cl = id_to_cluster.get(tgt_id)
+        if src_cl is None or tgt_cl is None:
+            continue
+        if id(src_cl) in merged_away or id(tgt_cl) in merged_away:
+            continue
+        # Merge src into tgt
+        tgt_cl["articles"] = tgt_cl["articles"] + src_cl["articles"]
+        tgt_cl["sources"] = list(set(tgt_cl["sources"]) | set(src_cl["sources"]))
+        tgt_cl["categories"] = list(set(tgt_cl.get("categories", [])) | set(src_cl.get("categories", [])))
+        tgt_cl["subcategories"] = list(set(tgt_cl.get("subcategories", [])) | set(src_cl.get("subcategories", [])))
+        tgt_cl["countries"] = list(set(tgt_cl.get("countries", [])) | set(src_cl.get("countries", [])))
+        tgt_cl["size"] = len(tgt_cl["articles"])
+        tgt_cl["multi"] = len(tgt_cl["sources"]) >= 2
+        tgt_cl["title"] = _generate_story_title(tgt_cl["articles"])
+        tgt_cl["primary_subcategory"] = _cluster_primary_subcategory(tgt_cl["articles"])
+        tgt_cl["llm_people"] = list({
+            p["name"]: p
+            for p in (tgt_cl.get("llm_people") or []) + (src_cl.get("llm_people") or [])
+        }.values())
+        merged_away.add(id(src_cl))
+        try:
+            cluster_list.remove(src_cl)
+        except ValueError:
+            pass
+        n_merges += 1
+
+    print(
+        f"[LLM-VALIDATE] {len(candidates)} clusters processed — "
+        f"{n_splits} split(s), {n_merges} merge(s)"
+    )
+    return cluster_list
+
+
+def _llm_extract_glossary(titles, clusters=None):
     """Extract a list of prominent people from headlines.
 
     Strategy:
       1. Auto-seed: scan titles for KNOWN_PEOPLE names (≥2 occurrences). These
-         are 100% reliable — canonical role + bio from known_people.py.
-      2. Call LLM (Gemini first, Groq fallback) to discover other figures.
-      3. Override LLM-returned entries that match KNOWN_PEOPLE.
+         are 100% reliable — canonical role + bio from the QeQ roster.
+      2a. If clusters are provided (normal path): aggregate per-event people that
+         were already extracted and verified by _llm_validate_and_enrich_clusters.
+         Only protagonist + key_actor entries are included — mentioned_only were
+         already filtered before reaching here.
+      2b. Fallback (no clusters): call LLM directly on flat title list (legacy path,
+         used if cluster validation was skipped or failed).
+      3. Override LLM-returned entries with canonical roster data when matched.
       4. Drop entries with generic/low-confidence roles.
-      5. Merge auto-seeded + LLM, dedupe, cap at 12.
+      5. Merge auto-seeded + LLM, dedupe, sort by prominence + mentions, cap at 15.
     """
     if not titles:
         return []
 
-    # ── Step 1: auto-seed from KNOWN_PEOPLE present in ALL titles ──
+    # ── Step 1: auto-seed from QeQ roster present in ALL titles ──
     seed_entries = _scan_titles_for_known_people(titles)
     seed_normalized = {_normalize_person_name(e["name"]) for e in seed_entries}
 
-    # ── Step 2: LLM extraction (cap to 120 titles to keep prompt small) ──
-    llm_titles = titles[:120]
-    bullet_list = "\n".join(f"- {t}" for t in llm_titles)
-    user_msg = f"Headlines:\n{bullet_list}"
-    raw_text = _llm_chat_cascade(_GLOSSARY_PROMPT, user_msg, json_mode=True, max_tokens=1500)
-
+    # ── Step 2a: aggregate per-cluster LLM people (context-verified) ──
     llm_entries = []
-    if raw_text:
-        text = raw_text.strip()
-        if text.startswith("```"):
-            text = re.sub(r"^```(?:json)?\s*", "", text)
-            text = re.sub(r"\s*```$", "", text)
-        start = text.find("{")
-        end = text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            text = text[start:end + 1]
-        try:
-            obj = json.loads(text)
-            llm_entries = obj.get("people", []) or []
-        except Exception:
-            llm_entries = []
+    if clusters is not None:
+        for cl in clusters:
+            if cl.get("noise"):
+                continue
+            for p in cl.get("llm_people") or []:
+                name = (p.get("name") or "").strip()
+                role = (p.get("role") or "") or ""
+                if not name or not _looks_like_person_name(name):
+                    continue
+                # Build a minimal entry compatible with Step 3 processing
+                llm_entries.append({
+                    "name": name,
+                    "role": role,
+                    "country": "",   # will be resolved via roster match below
+                    "bio": "",
+                })
+    else:
+        # ── Step 2b: fallback — direct LLM call on flat title list ──
+        llm_titles = titles[:120]
+        bullet_list = "\n".join(f"- {t}" for t in llm_titles)
+        user_msg = f"Headlines:\n{bullet_list}"
+        raw_text = _llm_chat_cascade(_GLOSSARY_PROMPT, user_msg, json_mode=True, max_tokens=1500)
+        if raw_text:
+            text = raw_text.strip()
+            if text.startswith("```"):
+                text = re.sub(r"^```(?:json)?\s*", "", text)
+                text = re.sub(r"\s*```$", "", text)
+            start = text.find("{")
+            end = text.rfind("}")
+            if start != -1 and end != -1 and end > start:
+                text = text[start:end + 1]
+            try:
+                obj = json.loads(text)
+                llm_entries = obj.get("people", []) or []
+            except Exception:
+                llm_entries = []
 
-    # ── Step 3+4: clean LLM entries, override with KNOWN, drop generic roles ──
+    # ── Step 1b: cross-check weak auto-seed matches against LLM-confirmed people ──
+    # Entries matched only by last-name, first-name, or single-alias carry real
+    # false-positive risk: a common word like "carrera" (race/career) can match a
+    # roster surname.  If the LLM validation ran (llm_entries non-empty), keep
+    # those weak matches only when the LLM also confirmed the person in some cluster.
+    # Full-name and multi-alias matches are considered reliable and always kept.
+    _WEAK_BASES = {"last-name", "first-name", "single-alias"}
+    if llm_entries:
+        confirmed_names = {_normalize_person_name(e["name"]) for e in llm_entries}
+        seed_entries = [
+            e for e in seed_entries
+            if (e.get("match_basis") not in _WEAK_BASES
+                or _normalize_person_name(e["name"]) in confirmed_names)
+        ]
+        seed_normalized = {_normalize_person_name(e["name"]) for e in seed_entries}
+
+    # ── Step 3+4: clean LLM entries, override with roster, drop generic roles ──
     valid_countries = {"argentina", "uruguay", "paraguay", "regional", "international"}
     cleaned_llm = []
     seen_names = set(seed_normalized)
@@ -865,12 +1187,12 @@ def _llm_extract_glossary(titles):
         role = (e.get("role") or "").strip()
         country = (e.get("country") or "").strip().lower()
         bio = (e.get("bio") or "").strip()
-        if not name or not role or country not in valid_countries:
+        if not name:
             continue
         if not _looks_like_person_name(name):
             continue
 
-        # Override with canonical KNOWN_PEOPLE entry if matched
+        # Override with canonical roster entry if matched
         match = _match_known_person(name)
         if match:
             norm = _normalize_person_name(match["name"])
@@ -878,15 +1200,25 @@ def _llm_extract_glossary(titles):
                 continue  # already seeded
             mentions = _count_name_mentions(match["name"], titles)
             if mentions < 1:
-                continue  # LLM hallucinated a name not actually in the corpus
+                continue  # not actually in the corpus
             seen_names.add(norm)
             cleaned_llm.append(_annotate_entity(match, mentions, "full-name-llm", "person"))
             continue
 
-        # Drop generic-role entries (signal of LLM guessing)
+        # For non-roster entries: require a non-generic role and at least 1 mention
         if role.lower().strip() in _GENERIC_ROLES:
             continue
-        if _count_name_mentions(name, titles) < 2:
+        # When coming from clusters (step 2a), role may be empty — still allow if
+        # the person is actually mentioned in titles
+        if not role and clusters is not None:
+            pass  # verified by LLM as protagonist/key_actor — allow with empty role
+        elif not role and clusters is None:
+            continue  # legacy flat-list path: require role
+        mentions = _count_name_mentions(name, titles)
+        if mentions < 1:
+            continue
+        # For legacy flat-list path, require ≥2 mentions to reduce noise
+        if clusters is None and mentions < 2:
             continue
 
         norm = _normalize_person_name(name)
@@ -894,12 +1226,15 @@ def _llm_extract_glossary(titles):
             continue
         seen_names.add(norm)
 
+        # Resolve country for cluster-sourced entries (may be empty)
+        if not country or country not in valid_countries:
+            country = "regional"
+
         if len(bio) > 200:
             bio = bio[:197] + "..."
-        mentions = _count_name_mentions(name, titles)
         cleaned_llm.append({
             "name": name,
-            "role": role,
+            "role": role or "Public figure",
             "country": country,
             "bio": bio,
             "mentions": mentions,
@@ -939,6 +1274,8 @@ def _llm_extract_glossary(titles):
             used_norms.add(norm)
             country_counts[c] += 1
             result.append(e)
+    # Filter out deceased people from the final glossary
+    result = [e for e in result if _normalize_person_name(e.get("name", "")) not in _DECEASED_PEOPLE]
     return result
 
 
@@ -1117,13 +1454,16 @@ def _llm_synthesize_title_from_summary(summary_en):
     return None
 
 
-def _llm_synthesize_brief(headlines):
+def _llm_synthesize_brief(headlines, source_context=""):
     """Call LLM to synthesize {summary, context}. Returns (summary, context) tuple.
 
     Tries Mistral → Cerebras → Groq → Gemini. Returns (None, None) on failure.
+    source_context: optional string like "Sources: Pagina 12, La Nacion (argentina)"
+    to anchor the LLM to the correct country and prevent hallucination.
     """
     bullet_list = "\n".join(f"- {h}" for h in headlines)
-    user_msg = f"Titulares:\n{bullet_list}"
+    prefix = f"{source_context}\n\n" if source_context else ""
+    user_msg = f"{prefix}Titulares:\n{bullet_list}"
     text = _llm_chat_cascade(_BRIEF_PROMPT, user_msg)
     if text:
         summary, context = _parse_brief_json(text)
@@ -1132,21 +1472,22 @@ def _llm_synthesize_brief(headlines):
     return None, None
 
 
-def _llm_synthesize_brief_with_body(headlines, bodies):
+def _llm_synthesize_brief_with_body(headlines, bodies, source_context=""):
     """Synthesize {summary, context} using headlines + article body excerpts.
 
     Tries Mistral → Cerebras → Groq → Gemini. Falls back to headline-only brief.
     """
     bullet_list = "\n".join(f"- {h}" for h in headlines)
     body_text = "\n\n".join(bodies[:3])  # max 3 bodies to fit context
-    user_msg = f"Titulares:\n{bullet_list}\n\nExcerpts:\n{body_text}"
+    prefix = f"{source_context}\n\n" if source_context else ""
+    user_msg = f"{prefix}Titulares:\n{bullet_list}\n\nExcerpts:\n{body_text}"
     text = _llm_chat_cascade(_BRIEF_WITH_BODY_PROMPT, user_msg)
     if text:
         summary, context = _parse_brief_json(text)
         if summary:
             return summary, context
     # Fall back to headline-only brief
-    return _llm_synthesize_brief(headlines)
+    return _llm_synthesize_brief(headlines, source_context=source_context)
 
 
 def _generate_story_title(articles, use_llm=False):
@@ -1254,10 +1595,18 @@ def _generate_story_brief(articles):
     if not titles:
         return None, None
 
+    sources_list = sorted({a.source for a in articles})
+    countries_list = sorted({a.country for a in articles if getattr(a, "country", None)})
+    source_context = (
+        f"Source outlets: {', '.join(sources_list)}. "
+        f"Countries of coverage: {', '.join(countries_list) if countries_list else 'unknown'}. "
+        f"Only include facts, countries, and names explicitly stated in the headlines below."
+    )
+
     bodies = _fetch_bodies_for_cluster(articles[:3])
     if bodies:
-        return _llm_synthesize_brief_with_body(titles[:6], bodies)
-    return _llm_synthesize_brief(titles[:6])
+        return _llm_synthesize_brief_with_body(titles[:6], bodies, source_context=source_context)
+    return _llm_synthesize_brief(titles[:6], source_context=source_context)
 
 
 
@@ -1376,7 +1725,7 @@ _FOREIGN_COUNTRY_PATTERNS = re.compile(
     r"\b(?:estados unidos|ee\.?\s*uu\.?|trump|biden|harris|kamala|washington|"
     r"china|rusia|ucrania|iran|irak|siria|gaza|israel|palestina|libano|"
     r"brasil|m[eé]xico|colombia|venezuela|per[uú]|chile|bolivia|ecuador|"
-    r"espa[ñn]a|francia|alemania|italia|jap[oó]n|corea|india|turqu[ií]a|"
+    r"espa[ñn]a|francia|alemania|alem[aá]n|italia|jap[oó]n|corea|india|turqu[ií]a|"
     r"nicaragua|panam[aá]|costa rica|cuba|honduras|somalia|pakist[aá]n|"
     r"irland[eéa]s?|hungar[ií]a|orb[aá]n|canad[aá]|australia|sud[aá]frica|"
     r"arab[ei]|emiratos|qatar|egipto|marruecos|argelia|nigeria|"
@@ -1394,6 +1743,52 @@ _CONO_SUR_PATTERNS = re.compile(
     r"milei|bullrich|caputo|orsi|pe[ñn]a|mercosur|cono sur)\b",
     re.IGNORECASE,
 )
+
+
+# Per-topic cap applied to the Internacional tab.  Prevents a single foreign
+# event (e.g. Peruvian elections) from filling the tab with 5+ near-identical cards.
+_INTL_TOPIC_CAPS: dict = {
+    "peru":        re.compile(r"\bper[uú]\b|\bperuanos?\b|\blima\b|\bkeiko\b", re.I),
+    "brasil":      re.compile(r"\bbrasil\b|\bbrasile[ñn]|\bbrasilia\b|\blula\b|\bbolsonaro\b", re.I),
+    "eeuu":        re.compile(r"\bestados unidos\b|\beeuu\b|\bwashington\b|\bnorteameric", re.I),
+    "venezuela":   re.compile(r"\bvenezuela\b|\bvenezolan|\bmaduro\b|\bch[aá]vez\b", re.I),
+    "chile":       re.compile(r"\bchile\b|\bchilenos?\b|\bboric\b", re.I),
+    "mexico":      re.compile(r"\bm[eé]xico\b|\bmexicanos?\b|\bsheinbaum\b", re.I),
+    "israel_gaza": re.compile(r"\bisrael\b|\bgaza\b|\bpalestina\b|\bnetanyahu\b|\bham[aá]s\b", re.I),
+    "ucrania":     re.compile(r"\bucrania\b|\bzelensky\b|\bputin\b|\bmoscú?\b", re.I),
+    "china":       re.compile(r"\bchina\b|\bxi jinping\b|\bbeijing\b|\bpek[ií]n\b", re.I),
+    "colombia":    re.compile(r"\bcolombia\b|\bcolombian|\bpetro\b|\bbogot[aá]\b", re.I),
+}
+INTL_MAX_PER_TOPIC = 3
+
+
+def _cap_intl_by_topic(clusters, max_per_topic=INTL_MAX_PER_TOPIC):
+    """Limit Internacional clusters to max_per_topic per detected foreign country/topic.
+
+    Clusters are checked against _INTL_TOPIC_CAPS using their title + lead text.
+    Clusters that don't match any topic pattern are never capped.
+    Clusters are already rank-sorted on entry, so the top-ranked ones are kept.
+    """
+    topic_counts: dict = {}
+    result = []
+    for cl in clusters:
+        text = f"{cl.get('title', '')} {cl.get('lead', '')}"
+        detected = None
+        for topic, pat in _INTL_TOPIC_CAPS.items():
+            if pat.search(text):
+                detected = topic
+                break
+        if detected:
+            count = topic_counts.get(detected, 0)
+            if count >= max_per_topic:
+                continue
+            topic_counts[detected] = count + 1
+        result.append(cl)
+    skipped = len(clusters) - len(result)
+    if skipped:
+        print(f"[INTL-CAP] {skipped} cluster(s) suppressed by per-topic cap ({max_per_topic}/topic): "
+              f"{', '.join(f'{k}={v}' for k, v in topic_counts.items() if v >= max_per_topic)}")
+    return result
 
 
 def _titles_mention_foreign_country(cluster) -> bool:
@@ -1539,6 +1934,118 @@ def _pick_country_top_story(clusters, country, df, used_titles):
     return "Sin cobertura reciente.", None
 
 
+# Capitalized tokens to exclude from named-entity detection (common sentence-starters
+# and generic institutional words that don't discriminate between events).
+_CAPS_STOPWORDS = {
+    "El", "La", "Los", "Las", "Un", "Una", "Del", "Con", "Por", "Que",
+    "Sus", "Son", "Sin", "Mas", "Tras", "Ante", "Bajo", "Como", "Para",
+    "Pero", "Este", "Esta", "Esto", "Estos", "Estas", "Ese", "Esa",
+    "Tres", "Dos", "Mil", "Solo", "Gran", "Nueva", "Nuevo",
+    "Gobierno", "Presidente", "Ministra", "Ministro", "Congreso", "Senado",
+    "Argentina", "Uruguay", "Paraguay",
+}
+
+
+def _split_cross_country_clusters(clusters):
+    """Pre-LLM guard: split clusters whose Cono Sur articles from different
+    countries share no named entity tokens — they likely cover different events
+    that TF-IDF grouped by shared topic vocabulary (e.g. 'laboral', 'reforma').
+
+    Only considers clusters with articles from ≥2 of {argentina, uruguay, paraguay}.
+    International clusters (all articles from one Cono Sur country covering a
+    foreign topic) are left unchanged.
+    """
+    CONO_SUR = {"argentina", "uruguay", "paraguay"}
+
+    def _caps_tokens(articles):
+        tokens = set()
+        for art in articles:
+            for word in art.title.split():
+                clean = word.strip(".,;:\"'¿?¡!()")
+                if (len(clean) >= 3
+                        and clean[0].isupper()
+                        and clean not in _CAPS_STOPWORDS
+                        and clean.lower() not in STOPWORDS):
+                    tokens.add(clean.lower())
+        return tokens
+
+    result = []
+    splits = 0
+    for cl in clusters:
+        cono_sur_in_cluster = set(cl["countries"]) & CONO_SUR
+        if len(cono_sur_in_cluster) < 2:
+            result.append(cl)
+            continue
+
+        # Group articles by country
+        by_country: dict = {}
+        unclaimed = []
+        for art in cl["articles"]:
+            c = getattr(art, "country", None) or ""
+            if c in CONO_SUR:
+                by_country.setdefault(c, []).append(art)
+            else:
+                unclaimed.append(art)
+
+        if len(by_country) < 2:
+            result.append(cl)
+            continue
+
+        # Check for shared named-entity tokens across any pair of country groups
+        country_tokens = {c: _caps_tokens(arts) for c, arts in by_country.items()}
+        country_list = list(country_tokens.keys())
+        has_shared = False
+        for i in range(len(country_list)):
+            for j in range(i + 1, len(country_list)):
+                if country_tokens[country_list[i]] & country_tokens[country_list[j]]:
+                    has_shared = True
+                    break
+            if has_shared:
+                break
+
+        if has_shared:
+            result.append(cl)
+            continue
+
+        # No shared entities → split by country
+        splits += 1
+        largest_country = max(by_country, key=lambda c: len(by_country[c]))
+        for country, arts in by_country.items():
+            # Attach unclaimed articles to the largest country group
+            all_arts = arts + unclaimed if country == largest_country else arts
+            if not all_arts:
+                continue
+            new_sources = sorted({a.source for a in all_arts})
+            new_cats = sorted({a.category for a in all_arts})
+            new_subs = sorted({
+                str(getattr(a, "subcategory", "")).strip()
+                for a in all_arts
+                if pd.notna(getattr(a, "subcategory", None))
+                and str(getattr(a, "subcategory", "")).strip()
+            })
+            result.append({
+                "articles": all_arts,
+                "sources": new_sources,
+                "countries": [country],
+                "categories": new_cats,
+                "subcategories": new_subs,
+                "primary_subcategory": _cluster_primary_subcategory(all_arts),
+                "lead": all_arts[0].title,
+                "title": _generate_story_title(all_arts),
+                "summary": None,
+                "context": None,
+                "size": len(all_arts),
+                "multi": len(new_sources) >= 2,
+                "noise": cl["noise"],
+                "indices": set(),
+                "llm_people": [],
+            })
+
+    if splits:
+        print(f"[CROSS-COUNTRY-SPLIT] {splits} cluster(s) split — no shared named entities across countries")
+    return result
+
+
 def _merge_similar_clusters(clusters):
     """Post-clustering merge: combine clusters about the same event.
 
@@ -1673,7 +2180,8 @@ def cluster_stories(df):
     PASS1_THRESHOLD = 0.25
     PASS2_THRESHOLD = 0.40
     RECLUSTER_MIN = 10   # only split really large clusters
-    MIN_KW = 3
+    MIN_KW_PASS1 = 2     # liberal: 2 shared keywords for initial grouping
+    MIN_KW_PASS2 = 3     # strict: require 3 for re-clustering large groups
 
     # Drop noise articles BEFORE clustering so lottery/quiniela/horóscopo
     # headlines can't become a "3 sources" story card.
@@ -1685,7 +2193,7 @@ def cluster_stories(df):
     kw_sets = [_keywords(r.title) for r in rows]
 
     # ── Pass 1: broad grouping ──
-    pass1_groups = _avg_linkage_cluster(titles_norm, kw_sets, PASS1_THRESHOLD, MIN_KW)
+    pass1_groups = _avg_linkage_cluster(titles_norm, kw_sets, PASS1_THRESHOLD, MIN_KW_PASS1)
 
     # ── Pass 2: refine large clusters ──
     final_groups = []
@@ -1697,7 +2205,7 @@ def cluster_stories(df):
         # Re-vectorise only this cluster's articles for sharper IDF
         sub_titles = [titles_norm[i] for i in group]
         sub_kw = [kw_sets[i] for i in group]
-        sub_groups = _avg_linkage_cluster(sub_titles, sub_kw, PASS2_THRESHOLD, MIN_KW)
+        sub_groups = _avg_linkage_cluster(sub_titles, sub_kw, PASS2_THRESHOLD, MIN_KW_PASS2)
 
         # Map local indices back to global
         for sg in sub_groups:
@@ -1735,6 +2243,7 @@ def cluster_stories(df):
             "multi": len(sources) >= 2,
             "noise": is_noise,
             "indices": set(indices),
+            "llm_people": [],
         })
 
     # ── Post-merge: combine clusters about the same event ──
@@ -1745,6 +2254,12 @@ def cluster_stories(df):
     # title re-synthesis (e.g. two clusters whose original titles differed
     # but whose regenerated titles are nearly identical).
     clusters = _merge_similar_clusters(clusters)
+
+    # Pre-LLM guard: split clusters that mix Cono Sur countries without shared entities.
+    clusters = _split_cross_country_clusters(clusters)
+
+    # LLM validation pass: validate coherence, apply splits/merges, annotate people.
+    clusters = _llm_validate_and_enrich_clusters(clusters)
 
     clusters.sort(key=lambda c: (c["multi"], _story_rank_score(c)), reverse=True)
     return clusters
@@ -2004,14 +2519,26 @@ def build_also_reported(df, clusters, country, limit=10):
 
     cdf = df[df["country"] == country]
 
-    # Group remaining articles by source
+    # Group remaining articles by source — exclude international stories
+    # so country tabs only show domestic coverage.
+    intl_url_hints = ("/mundo/", "/internacionales/", "/world/", "/exterior/")
     by_source = {}
     for idx, row in cdf.iterrows():
-        if idx not in used and not _is_noise(row["title"]):
-            src = row["source"]
-            if src not in by_source:
-                by_source[src] = []
-            by_source[src].append(row)
+        if idx in used or _is_noise(row["title"]):
+            continue
+        # Skip articles classified as international
+        if row.get("category") == "internacional":
+            continue
+        # Skip articles whose URL clearly belongs to international sections
+        if any(h in (row.get("url") or "").lower() for h in intl_url_hints):
+            continue
+        # Skip if title is about foreign topics with no local connection
+        if _FOREIGN_COUNTRY_PATTERNS.search(row["title"]) and not _CONO_SUR_PATTERNS.search(row["title"]):
+            continue
+        src = row["source"]
+        if src not in by_source:
+            by_source[src] = []
+        by_source[src].append(row)
 
     # Round-robin pick across sources
     remaining = []
@@ -2149,6 +2676,10 @@ def generate_dashboard():
             cl["multi"] = False  # keep flag so template can show "(single source)"
             country_clusters[country].append(cl)
 
+    # Cap Internacional tab: limit to INTL_MAX_PER_TOPIC clusters per foreign topic
+    # (prevents one foreign election from filling the tab with 5+ near-identical cards).
+    internacional_clusters = _cap_intl_by_topic(internacional_clusters)
+
     # Cap each tab's display list — top N by rank score (already sorted)
     for country in COUNTRIES:
         country_clusters[country] = country_clusters[country][:PER_TAB_DISPLAY_CAP]
@@ -2235,7 +2766,7 @@ def generate_dashboard():
         </div>
 
         <div class="sec-head">Key Stories &mdash; {name} ({n_country_stories})</div>
-        <p class="sec-desc">Multi-source stories where {name}'s press is the dominant voice. Each card shows how different newsrooms framed the same event.</p>
+        <p class="sec-desc">Top stories from {name}'s press. Multi-source cards show how different newsrooms framed the same event.</p>
         <div class="stories-grid">{stories_html}</div>
 
         <div class="sec-head">Also Reported &mdash; {name}</div>
@@ -2254,8 +2785,8 @@ def generate_dashboard():
             if t and t not in seen_titles:
                 seen_titles.add(t)
                 glossary_titles.append(t)
-    # Auto-seed scans ALL titles (cheap); LLM prompt is capped to 120
-    people_entries = _llm_extract_glossary(glossary_titles)
+    # Auto-seed scans ALL titles (cheap); cluster-sourced LLM people are pre-verified
+    people_entries = _llm_extract_glossary(glossary_titles, clusters=clusters)
     org_entries = _scan_titles_for_known_organizations(glossary_titles[:120])
     glossary_html = build_glossary_html(people_entries, org_entries)
     n_glossary = len(people_entries) + len(org_entries)
