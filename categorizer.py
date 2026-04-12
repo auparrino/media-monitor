@@ -279,7 +279,7 @@ def analyze_article(
             "category": category,
             "subcategory": infer_subcategory(title, url, category),
             "confidence": confidence,
-            "reason": "low-confidence-html",
+            "reason": "low-confidence",
         }
 
     subcategory = infer_subcategory(title, url, category)

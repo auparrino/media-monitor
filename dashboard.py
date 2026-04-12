@@ -512,7 +512,7 @@ def _build_lastname_prominence_map():
         entries.sort(
             key=lambda e: (
                 -_role_prominence(e),
-                -len(e.get("role", "")),
+                0 if _entry_source(e) == "kp" else 1,
                 -len(e.get("role", "")),
             )
         )
@@ -530,6 +530,8 @@ def _build_lastname_prominence_map():
         else:
             min_gap = 20
         if gap >= min_gap:
+            result[last_name] = (top, True)
+        else:
             result[last_name] = (top, True)
     return result
 
@@ -1318,8 +1320,11 @@ _FOREIGN_COUNTRY_PATTERNS = re.compile(
     r"china|rusia|ucrania|iran|irak|siria|gaza|israel|palestina|libano|"
     r"brasil|m[eé]xico|colombia|venezuela|per[uú]|chile|bolivia|ecuador|"
     r"espa[ñn]a|francia|alemania|italia|jap[oó]n|corea|india|turqu[ií]a|"
-    r"nicaragua|panama|costa rica|cuba|honduras|somalia|pakistan|"
-    r"peruanos?|elecciones? .* peru|"
+    r"nicaragua|panam[aá]|costa rica|cuba|honduras|somalia|pakist[aá]n|"
+    r"irland[eéa]s?|hungar[ií]a|orb[aá]n|canad[aá]|australia|sud[aá]frica|"
+    r"arab[ei]|emiratos|qatar|egipto|marruecos|argelia|nigeria|"
+    r"reino unido|gran breta[ñn]a|inglaterra|escocia|"
+    r"peruanos?|elecciones? .* peru|ch[aá]vez|"
     r"wall street|nasa|artemis|kremlin|pentagon[oe]|otan|nato|europa|"
     r"netanyahu|putin|macron|zelensky|petro|lula|maduro|bukele)\b",
     re.IGNORECASE,
@@ -1781,7 +1786,7 @@ def _render_story_card(c, idx, group_by_country=False):
         <div class="story-header">
             <span class="story-num">{idx}</span>
             {badges} {flags}
-            <span class="story-sources">{len(c['sources'])} sources {coverage}</span>
+            <span class="story-sources">{len(c['sources'])} {'source' if len(c['sources']) == 1 else 'sources'} {coverage}</span>
         </div>
         <div class="story-title">{_esc(c['title'])}</div>
         {summary_html}
@@ -1934,10 +1939,10 @@ def build_also_reported(df, clusters, country, limit=10):
 
     Round-robins across sources so no single outlet dominates the list.
     """
-    # Collect indices used in multi-source clusters
+    # Collect indices used in displayed clusters (multi-source + promoted singles)
     used = set()
     for c in clusters:
-        if c["multi"]:
+        if c["multi"] or c.get("country"):
             used |= c["indices"]
 
     cdf = df[df["country"] == country]
@@ -2040,6 +2045,47 @@ def generate_dashboard():
         elif target in country_clusters:
             country_clusters[target].append(cl)
 
+    # ── Backfill country tabs with top single-source clusters when needed ──
+    # When a country has fewer than PER_TAB_DISPLAY_CAP multi-source stories,
+    # promote the best single-source clusters so the tab isn't near-empty.
+    single_source_clusters = sorted(
+        [cl for cl in clusters if not cl["multi"] and not cl["noise"]],
+        key=lambda c: len(c["articles"]),
+        reverse=True,
+    )
+    for country in COUNTRIES:
+        deficit = PER_TAB_DISPLAY_CAP - len(country_clusters[country])
+        if deficit <= 0:
+            continue
+        # Find single-source clusters whose articles are from this country
+        # and are about domestic topics (not international news from local outlets)
+        candidates = []
+        for cl in single_source_clusters:
+            if cl.get("country"):
+                continue  # already assigned
+            country_arts = [a for a in cl["articles"] if a.country == country]
+            if len(country_arts) < len(cl["articles"]) * 0.8:
+                continue
+            # Skip international topics
+            if _domestic_ratio(cl) < 0.5:
+                continue
+            # For single-article clusters, check title directly for foreign refs
+            any_foreign = any(
+                _FOREIGN_COUNTRY_PATTERNS.search(a.title) for a in cl["articles"]
+            )
+            any_local = any(
+                _CONO_SUR_PATTERNS.search(a.title) for a in cl["articles"]
+            )
+            if any_foreign and not any_local:
+                continue
+            candidates.append(cl)
+        # Sort by number of articles (bigger cluster = more coverage)
+        candidates.sort(key=lambda c: len(c["articles"]), reverse=True)
+        for cl in candidates[:deficit]:
+            cl["country"] = country
+            cl["multi"] = False  # keep flag so template can show "(single source)"
+            country_clusters[country].append(cl)
+
     # Cap each tab's display list — top N by rank score (already sorted)
     for country in COUNTRIES:
         country_clusters[country] = country_clusters[country][:PER_TAB_DISPLAY_CAP]
@@ -2065,7 +2111,16 @@ def generate_dashboard():
         if summary:
             refined = _llm_synthesize_title_from_summary(summary)
             if refined:
-                cl["title"] = refined
+                # Reject LLM title if it introduces foreign countries not in originals
+                orig_foreign = set()
+                for a in cl["articles"]:
+                    m = _FOREIGN_COUNTRY_PATTERNS.findall(a.title)
+                    orig_foreign.update(w.lower() for w in m)
+                new_foreign = set(
+                    w.lower() for w in _FOREIGN_COUNTRY_PATTERNS.findall(refined)
+                )
+                if not (new_foreign - orig_foreign):
+                    cl["title"] = refined
         else:
             failed_briefs.append(cl)
         time.sleep(LLM_CALL_DELAY)
@@ -2080,7 +2135,15 @@ def generate_dashboard():
             if summary:
                 refined = _llm_synthesize_title_from_summary(summary)
                 if refined:
-                    cl["title"] = refined
+                    orig_foreign = set()
+                    for a in cl["articles"]:
+                        m = _FOREIGN_COUNTRY_PATTERNS.findall(a.title)
+                        orig_foreign.update(w.lower() for w in m)
+                    new_foreign = set(
+                        w.lower() for w in _FOREIGN_COUNTRY_PATTERNS.findall(refined)
+                    )
+                    if not (new_foreign - orig_foreign):
+                        cl["title"] = refined
             else:
                 # Fallback: synthesize a summary from headlines (B4)
                 titles = list(dict.fromkeys(a.title for a in cl["articles"]))
