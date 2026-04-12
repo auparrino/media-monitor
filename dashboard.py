@@ -1,5 +1,6 @@
 """Generate policy briefing document — story-based, print-ready."""
 
+import html as html_mod
 import os
 import re
 import json
@@ -16,6 +17,12 @@ from sklearn.metrics.pairwise import cosine_similarity
 from dotenv import load_dotenv
 
 from categorizer import analyze_article
+from name_utils import (
+    looks_like_person_name as _looks_like_person_name,
+    normalize_person_name as _normalize_person_name,
+    NON_PERSON_TOKENS as _NON_PERSON_NAME_TOKENS,
+    NAME_CONNECTORS as _PERSON_CONNECTORS,
+)
 
 
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
@@ -26,6 +33,16 @@ CEREBRAS_API_KEY = os.getenv("CEREBRAS_API_KEY", "")
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "data", "news.db")
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "output", "dashboard.html")
+
+# ── Rate-limit and delay constants ────────────────────────────────────
+LLM_CALL_DELAY = 2          # seconds between LLM calls
+LLM_RETRY_COOLDOWN = 10     # seconds before retrying failed briefs
+LLM_RETRY_DELAY = 3         # seconds between retry LLM calls
+
+
+def _esc(text):
+    """HTML-escape user-supplied text to prevent XSS."""
+    return html_mod.escape(str(text)) if text else ""
 
 CATEGORY_COLORS = {
     "politica": "#7d3c98",
@@ -85,10 +102,33 @@ NOISE_PATTERNS = [
     r"vodka|gin tonic|cocktail",
     r"receta de ",
     r"desaf[ií]o moos",
+    r"cu[aá]nto cuesta (?:disney|netflix|spotify|hbo|amazon)",
     r"colegio biling[uü]e",
     r"en vivo:?\s*(pe[nñ]arol|nacional|racing|boca|river|independiente)",
     r"vs\.\s.*(en vivo|en directo)",
     r"(apertura|clausura).*en vivo",
+    r"\b\d+\s*-\s*\d+\b.*\b(gol|penales?|apertura|clausura|fecha\s+\d)\b",
+    r"\b(primer|segundo)\s+tiempo\b.*\b(gol|lesion|messi|partido|empat|argen|colom|uruguay|penal)",
+    r"\b(gol|lesion|messi|partido|empat)\b.*\b(primer|segundo)\s+tiempo\b",
+    r"\bse juega\b.*\b(primer|segundo)\b",
+    r"\bdebut[oó]?\b.*\bprimera\b",
+    r"\bgol de\b",
+    r"\bcampe[oó]n\b",
+    r"\bpenales\b.*\bganó\b|\bganó\b.*\bpenales\b",
+    r"\bcopa libertadores\b",
+    r"\bcopa am[eé]rica\b",
+    r"\bcopa sudamericana\b",
+    r"\bsupercopa\b",
+    r"\bmundial\s+\d{4}\b",
+    r"\b(pe[ñn]arol|nacional|cerro porte[ñn]o|olimpia|libertad)\b.*(gan[oó]|perdi[oó]|empat[oó]|venci[oó])",
+    r"(gan[oó]|perdi[oó]|empat[oó]|venci[oó]).*\b(pe[ñn]arol|nacional|cerro porte[ñn]o|olimpia|libertad)\b",
+    r"\b\d+\s*fotos?\b",
+    r"\btobillo\b.*\bmessi\b|\bmessi\b.*\btobillo\b",
+    r"\bsu[aá]rez\b.*\bdescuentos?\b",
+    r"\bciclismo\b.*\bcampeonato\b|\bcampeonato\b.*\bciclismo\b",
+    r"\bdeportivo maldonado\b",
+    r"\bbicampe[oó]n\b",
+    r"\balargue\b",
     # Lottery / quiniela / numbers games — routine roundups, not news
     r"\bquiniela\b",
     r"\bquini ?6\b",
@@ -104,6 +144,27 @@ NOISE_PATTERNS = [
     r"números? ganadores?",
     r"numeros? ganadores?",
 ]
+
+def _clean_scraped_title(title: str) -> str:
+    """Strip section-header prefixes and newlines from scraped titles."""
+    if not title or "\n" not in title:
+        return (title or "").strip()
+    lines = title.split("\n")
+    cleaned = []
+    for line in lines:
+        s = line.strip()
+        if not s:
+            continue
+        # Skip pure ALL-CAPS lines (section headers like VIDEO, FECHA 11, INTERNACIONALES)
+        if re.match(r'^[A-ZÁÉÍÓÚÑ0-9 /\-]{3,}$', s) and len(s) < 60:
+            continue
+        cleaned.append(s)
+    result = " ".join(cleaned)
+    result = re.sub(r'\s+', ' ', result).strip()
+    if result.startswith(">"):
+        result = result.lstrip("> ").strip()
+    return result
+
 
 # ── Ranking & merge tuning ─────────────────────────────────────────────
 MERGE_TITLE_SIM = 0.42        # cosine sim between cluster titles to trigger merge
@@ -131,6 +192,15 @@ STOPWORDS = {
     "años", "mes", "semana", "contra", "luego", "después", "despues",
     "mientras", "dijo", "afirmó", "señaló", "explicó", "aseguró", "indicó",
     "agregó",
+    # Generic political/institutional words that don't discriminate events
+    "casa", "rosada", "gobierno", "país", "pais", "nación", "nacion",
+    "presidente", "ministro", "ministra", "congreso", "senado",
+    "momento", "debate", "propuesta", "proyecto", "medida", "medidas",
+    "argentina", "uruguay", "paraguay",
+    # Electoral vocabulary too common to discriminate between elections
+    "candidatura", "candidato", "candidata", "elecciones", "electoral",
+    "partido", "campaña", "campana", "voto", "votar", "presidencial",
+    "oficialismo", "oposición", "oposicion",
 }
 
 
@@ -154,8 +224,11 @@ def load_articles():
         df = recent
     cleaned_rows = []
     for row in df.to_dict("records"):
+        # Clean up titles with embedded section headers / newlines from scrapers
+        raw_title = row.get("title", "")
+        row["title"] = _clean_scraped_title(raw_title)
         analysis = analyze_article(
-            row.get("title", ""),
+            row["title"],
             row.get("url", ""),
             source=row.get("source", ""),
             fallback=row.get("category"),
@@ -280,64 +353,10 @@ _GENERIC_ROLES = {
     "public figure", "political figure", "government official",
     "party member", "national figure", "spokesperson", "spokesman",
 }
-_PERSON_CONNECTORS = {"da", "de", "del", "do", "dos", "das", "y", "e", "van", "von"}
-_NON_PERSON_NAME_TOKENS = {
-    "administracion", "agencia", "ande", "antimafia", "banco", "bloque",
-    "camara", "capital", "cartel", "clan", "club", "coalicion", "comando",
-    "comision", "comite", "comunidad", "congreso", "consejo",
-    "coordinadora", "corte", "cruzada", "diario", "direccion", "ejercito",
-    "empresa", "estado", "familia", "fiscalia", "frente", "fundacion",
-    "gobierno", "grupo", "hermanos", "hora", "hub", "instituto", "las",
-    "leonas", "leones", "los", "ministerio", "movimiento", "municipalidad",
-    "nomadas", "organismo", "organizacion", "panteras", "partido",
-    "periodico", "policia", "presidencia", "primer", "programa", "pumas",
-    "republica", "secretaria", "seleccion", "senado", "sindicato",
-    "sociedad", "suprema", "teros", "tierra", "tribunal", "ultima",
-    "unidad", "universidad",
-}
+# _PERSON_CONNECTORS and _NON_PERSON_NAME_TOKENS are imported from name_utils
 
 
-def _normalize_person_name(name):
-    """Lowercase, strip accents, collapse whitespace for name matching."""
-    if not name:
-        return ""
-    s = name.lower().strip()
-    accent_map = str.maketrans("áéíóúñü", "aeiounu")
-    s = s.translate(accent_map)
-    s = re.sub(r"\s+", " ", s)
-    s = re.sub(r"[^\w\s]", "", s)
-    return s.strip()
-
-
-def _looks_like_person_name(name):
-    """Filter out institutions, parties, brands, and slogan-like phrases."""
-    if not name or re.search(r"\d", name) or "/" in str(name):
-        return False
-    raw_tokens = [tok for tok in re.split(r"\s+", str(name).strip()) if tok]
-    if len(raw_tokens) < 2 or len(raw_tokens) > 6:
-        return False
-
-    substantial = []
-    uppercase_like = 0
-    for token in raw_tokens:
-        norm = _normalize_person_name(token)
-        if norm in _PERSON_CONNECTORS:
-            continue
-        if not re.search(r"[A-Za-zÁÉÍÓÚÑáéíóúñ]", token):
-            return False
-        if norm in _NON_PERSON_NAME_TOKENS:
-            return False
-        if len(token) > 1 and token.isupper():
-            return False
-        substantial.append(token)
-        if token[0].isupper():
-            uppercase_like += 1
-
-    if len(substantial) < 2:
-        return False
-    if uppercase_like < 2:
-        return False
-    return True
+# _normalize_person_name and _looks_like_person_name are imported from name_utils
 
 
 def _count_name_mentions(name, titles):
@@ -522,9 +541,11 @@ _LASTNAME_CANONICAL = _build_lastname_prominence_map()
 _AMBIGUOUS_SHORT_LASTNAMES = {
     "cruz", "rosa", "mano", "caso", "plan", "hora", "mesa", "gato",
     "vaca", "gana", "para", "mejor", "solo", "cosa",
-    "guerra", "real", "paz", "campo", "rico", "blanco", "negro",
+    "guerra", "real", "paz", "campo", "rico", "blanco",
     "fuerte", "franco", "pastor", "moral", "bueno", "leal",
 }
+# NOTE: "negro" removed — it blocked Uruguay's Interior Minister Carlos Negro.
+# The prominence system (80+ = ministro) now handles disambiguation correctly.
 # NOTE: "pena" removed — it blocked surname matching for Santiago Peña
 # (president of Paraguay). The prominence system + canonical map now
 # handle disambiguation (Peña has prominence 100, far above any runner-up).
@@ -545,6 +566,15 @@ _COMMON_FIRST_NAMES = {
     "hector", "antonio", "francisco",
 }
 
+# Spanish words that happen to be first names — too ambiguous for first-name-
+# only matching because they appear constantly in headlines with their
+# ordinary word meaning (e.g. "libertad" = freedom, not actress Libertad Lamarque).
+_SPANISH_WORD_FIRST_NAMES = {
+    "libertad", "esperanza", "victoria", "pilar", "dolores", "mercedes",
+    "rosario", "concepcion", "trinidad", "soledad", "consuelo", "socorro",
+    "asuncion", "amparo", "milagros", "remedios", "argentina",
+}
+
 
 def _build_firstname_canonical_map():
     buckets: dict[str, list[dict]] = {}
@@ -554,7 +584,7 @@ def _build_firstname_canonical_map():
         if len(words) < 2:
             continue
         first = words[0]
-        if len(first) < 6 or first in _COMMON_FIRST_NAMES:
+        if len(first) < 6 or first in _COMMON_FIRST_NAMES or first in _SPANISH_WORD_FIRST_NAMES:
             continue
         buckets.setdefault(first, []).append(entry)
 
@@ -775,51 +805,10 @@ def _llm_extract_glossary(titles):
     seed_entries = _scan_titles_for_known_people(titles)
     seed_normalized = {_normalize_person_name(e["name"]) for e in seed_entries}
 
-    # ── Step 2: LLM extraction (Gemini first — better factual recall) ──
+    # ── Step 2: LLM extraction (uses unified cascade) ──
     bullet_list = "\n".join(f"- {t}" for t in titles)
     user_msg = f"Headlines:\n{bullet_list}"
-    raw_text = None
-
-    if GEMINI_API_KEY:
-        try:
-            resp = http_requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}",
-                json={
-                    "contents": [{"parts": [{"text": f"{_GLOSSARY_PROMPT}\n\n{user_msg}"}]}],
-                    "generationConfig": {
-                        "temperature": 0.2,
-                        "maxOutputTokens": 1500,
-                        "responseMimeType": "application/json",
-                    },
-                },
-                timeout=25,
-            )
-            resp.raise_for_status()
-            raw_text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
-        except Exception:
-            raw_text = None
-
-    if not raw_text and GROQ_API_KEY:
-        try:
-            resp = http_requests.post(
-                "https://api.groq.com/openai/v1/chat/completions",
-                headers={"Authorization": f"Bearer {GROQ_API_KEY}"},
-                json={
-                    "model": "llama-3.1-8b-instant",
-                    "messages": [
-                        {"role": "system", "content": _GLOSSARY_PROMPT},
-                        {"role": "user", "content": user_msg},
-                    ],
-                    "temperature": 0.2,
-                    "max_tokens": 1500,
-                    "response_format": {"type": "json_object"},
-                },
-                timeout=25,
-            )
-            resp.raise_for_status()
-            raw_text = resp.json()["choices"][0]["message"]["content"]
-        except Exception:
-            raw_text = None
+    raw_text = _llm_chat_cascade(_GLOSSARY_PROMPT, user_msg, json_mode=True, max_tokens=1500)
 
     llm_entries = []
     if raw_text:
@@ -998,6 +987,15 @@ def _llm_chat_cascade(system_prompt, user_msg, json_mode=True, max_tokens=500):
     return None
 
 
+# Post-LLM filter: strip editorial phrases that small models ignore
+_EDITORIAL_RE = re.compile(
+    r"\b(raises concerns?|highlights? the importance|has the potential|"
+    r"is relevant because|puts? to the test|reflects?|underscores?|"
+    r"could lead to|may impact|is likely to|sends? a (?:clear |strong )?(?:signal|message))\b",
+    re.IGNORECASE,
+)
+
+
 def _parse_brief_json(text):
     """Parse LLM response into (summary, context) tuple. Returns (None, None) on failure."""
     if not text:
@@ -1018,9 +1016,16 @@ def _parse_brief_json(text):
         return None, None
     summary = (obj.get("summary") or "").strip().strip('"\'""«»')
     context = (obj.get("context") or "").strip().strip('"\'""«»')
-    if not (50 < len(summary) < 600):
+
+    # Strip editorial phrases the LLM may have added despite instructions
+    summary = _EDITORIAL_RE.sub("", summary).strip()
+    summary = re.sub(r"\s{2,}", " ", summary)
+    context = _EDITORIAL_RE.sub("", context).strip()
+    context = re.sub(r"\s{2,}", " ", context)
+
+    if not (50 < len(summary) < 450):
         return None, None
-    if context and len(context) > 250:
+    if context and len(context) > 200:
         context = ""
     return summary, context
 
@@ -1085,23 +1090,24 @@ def _llm_synthesize_brief_with_body(headlines, bodies):
     return _llm_synthesize_brief(headlines)
 
 
-def _generate_story_title(articles):
+def _generate_story_title(articles, use_llm=False):
     """Generate a synthesized story title.
 
-    Tries Gemini Flash first for true LLM synthesis.
-    Falls back to TF-IDF centroid selection if API unavailable.
+    When use_llm=True, tries LLM synthesis first.
+    Otherwise (default during clustering), uses fast TF-IDF centroid selection.
     """
     if len(articles) == 1:
         return articles[0].title
 
     titles = list(dict.fromkeys(art.title for art in articles))  # dedupe preserving order
 
-    # Try LLM synthesis
-    llm_title = _llm_synthesize_title(titles[:6])  # max 6 headlines to keep prompt small
-    if llm_title:
-        return llm_title
+    # LLM synthesis only when explicitly requested (display-time, not clustering)
+    if use_llm:
+        llm_title = _llm_synthesize_title(titles[:6])
+        if llm_title:
+            return llm_title
 
-    # Fallback: TF-IDF centroid-based selection
+    # Fast fallback: TF-IDF centroid-based selection
     clean = []
     for t in titles:
         t = re.sub(r',?\s*EN VIVO:?\s*', ': ', t, flags=re.IGNORECASE)
@@ -1225,11 +1231,20 @@ def _avg_linkage_cluster(titles_norm, kw_sets, threshold, min_kw_overlap):
     dist = np.clip(1.0 - sim, 0, 2.0)
     np.fill_diagonal(dist, 0)
 
-    for i in range(n):
-        for j in range(i + 1, n):
-            if len(kw_sets[i] & kw_sets[j]) < min_kw_overlap:
-                dist[i, j] = 1.0
-                dist[j, i] = 1.0
+    # Vectorised keyword-overlap penalty: pairs sharing fewer than
+    # min_kw_overlap keywords get distance forced to 1.0.
+    # Convert keyword sets to a boolean matrix for fast intersection counting.
+    all_kw = sorted({kw for ks in kw_sets for kw in ks})
+    if all_kw:
+        kw_idx = {w: i for i, w in enumerate(all_kw)}
+        kw_mat = np.zeros((n, len(all_kw)), dtype=np.float32)
+        for i, ks in enumerate(kw_sets):
+            for w in ks:
+                kw_mat[i, kw_idx[w]] = 1.0
+        overlap = kw_mat @ kw_mat.T
+        mask = overlap < min_kw_overlap
+        np.fill_diagonal(mask, False)
+        dist[mask] = 1.0
 
     condensed = squareform(dist, checks=False)
     Z = linkage(condensed, method='average')
@@ -1301,10 +1316,11 @@ def _cluster_entity_country(cluster):
 _FOREIGN_COUNTRY_PATTERNS = re.compile(
     r"\b(?:estados unidos|ee\.?\s*uu\.?|trump|biden|harris|kamala|washington|"
     r"china|rusia|ucrania|iran|irak|siria|gaza|israel|palestina|libano|"
-    r"brasil|mexico|colombia|venezuela|peru|chile|bolivia|ecuador|"
-    r"españa|francia|alemania|italia|japon|corea|india|turquia|"
+    r"brasil|m[eé]xico|colombia|venezuela|per[uú]|chile|bolivia|ecuador|"
+    r"espa[ñn]a|francia|alemania|italia|jap[oó]n|corea|india|turqu[ií]a|"
     r"nicaragua|panama|costa rica|cuba|honduras|somalia|pakistan|"
-    r"wall street|nasa|artemis|kremlin|pentagon[oe]|otan|nato|"
+    r"peruanos?|elecciones? .* peru|"
+    r"wall street|nasa|artemis|kremlin|pentagon[oe]|otan|nato|europa|"
     r"netanyahu|putin|macron|zelensky|petro|lula|maduro|bukele)\b",
     re.IGNORECASE,
 )
@@ -1346,19 +1362,21 @@ def _cluster_country_assignment(cluster):
        each) → 'regional'.
     4. Otherwise → dominant source country.
     """
+    # Compute entity country once (expensive) and reuse
+    entity_country, entity_ratio, n_ent = _cluster_entity_country(cluster)
+
     # ── Step 1: internacional check ──
     dr = _domestic_ratio(cluster)
     if dr < 0.30:
-        # Even if articles say 'internacional', the event may be *about*
-        # a Cono Sur actor (e.g. Milei at the UN). Entity check overrides
-        # only when we have strong evidence (≥2 entities).
-        entity_country, entity_ratio, n_ent = _cluster_entity_country(cluster)
         if entity_country and n_ent >= 2 and entity_ratio >= 0.70:
             return entity_country
         return "internacional"
 
-    # ── Step 2: entity-based thematic country ──
-    entity_country, entity_ratio, n_ent = _cluster_entity_country(cluster)
+    # ── Step 1b: foreign-topic override ──
+    if _titles_mention_foreign_country(cluster):
+        has_cono_sur_entity = entity_country and entity_country in ("argentina", "uruguay", "paraguay")
+        if not has_cono_sur_entity:
+            return "internacional"
 
     # ── Step 3: source-based counts ──
     sources_by_country = defaultdict(set)
@@ -1590,10 +1608,10 @@ def cluster_stories(df):
     keywords (OTAN, misil, petróleo) gain weight, naturally splitting
     mega-clusters into precise sub-events.
     """
-    PASS1_THRESHOLD = 0.20
+    PASS1_THRESHOLD = 0.25
     PASS2_THRESHOLD = 0.40
     RECLUSTER_MIN = 10   # only split really large clusters
-    MIN_KW = 2
+    MIN_KW = 3
 
     # Drop noise articles BEFORE clustering so lottery/quiniela/horóscopo
     # headlines can't become a "3 sources" story card.
@@ -1732,8 +1750,8 @@ def _render_story_card(c, idx, group_by_country=False):
             for art in by_country[country]:
                 source_lines += f"""
                 <div class="story-variant">
-                    <span class="sv-source">{art.source}</span>
-                    <a class="sv-title" href="{art.url}" target="_blank">{art.title}</a>
+                    <span class="sv-source">{_esc(art.source)}</span>
+                    <a class="sv-title" href="{_esc(art.url)}" target="_blank">{_esc(art.title)}</a>
                 </div>"""
             source_lines += "</div>"
     else:
@@ -1745,16 +1763,16 @@ def _render_story_card(c, idx, group_by_country=False):
             seen.add(art.source)
             source_lines += f"""
             <div class="story-variant">
-                <span class="sv-source">{art.source}</span>
-                <a class="sv-title" href="{art.url}" target="_blank">{art.title}</a>
+                <span class="sv-source">{_esc(art.source)}</span>
+                <a class="sv-title" href="{_esc(art.url)}" target="_blank">{_esc(art.title)}</a>
             </div>"""
 
     summary_html = (
-        f'<div class="story-summary">{c["summary"]}</div>'
+        f'<div class="story-summary">{_esc(c["summary"])}</div>'
         if c.get("summary") else ""
     )
     context_html = (
-        f'<div class="story-context"><span class="ctx-label">Context</span>{c["context"]}</div>'
+        f'<div class="story-context"><span class="ctx-label">Context</span>{_esc(c["context"])}</div>'
         if c.get("context") else ""
     )
 
@@ -1765,7 +1783,7 @@ def _render_story_card(c, idx, group_by_country=False):
             {badges} {flags}
             <span class="story-sources">{len(c['sources'])} sources {coverage}</span>
         </div>
-        <div class="story-title">{c['title']}</div>
+        <div class="story-title">{_esc(c['title'])}</div>
         {summary_html}
         {context_html}
         <div class="story-body">{source_lines}</div>
@@ -1816,7 +1834,7 @@ def _render_entity_groups(entries, empty_msg):
         name, flag = country_display[country]
         cards = ""
         for entry in grouped[country]:
-            bio_html = f'<div class="gloss-bio">{entry["bio"]}</div>' if entry.get("bio") else ""
+            bio_html = f'<div class="gloss-bio">{_esc(entry["bio"])}</div>' if entry.get("bio") else ""
             mention_text = f'{entry.get("mentions", 0)} menciones'
             confidence_text = _confidence_label(entry.get("confidence", 0.0))
             match_basis = (entry.get("match_basis") or "").replace("-", " ").title()
@@ -1829,8 +1847,8 @@ def _render_entity_groups(entries, empty_msg):
             """
             cards += f"""
             <div class="gloss-card">
-                <div class="gloss-name">{entry['name']}</div>
-                <div class="gloss-role">{entry['role']}</div>
+                <div class="gloss-name">{_esc(entry['name'])}</div>
+                <div class="gloss-role">{_esc(entry['role'])}</div>
                 {meta}
                 {bio_html}
             </div>"""
@@ -1962,8 +1980,8 @@ def build_also_reported(df, clusters, country, limit=10):
         <div class="also-item">
             <span class="also-date">{date_str}</span>
             <span class="badge" style="background:{color};color:{text_color}">{label}</span>
-            <span class="also-source">{row['source']}</span>
-            <a class="also-title" href="{row['url']}" target="_blank">{row['title']}</a>
+            <span class="also-source">{_esc(row['source'])}</span>
+            <a class="also-title" href="{_esc(row['url'])}" target="_blank">{_esc(row['title'])}</a>
         </div>"""
 
     flag = COUNTRY_FLAGS[country]
@@ -1980,20 +1998,41 @@ def build_also_reported(df, clusters, country, limit=10):
 
 def generate_dashboard():
     df = load_articles()
+    if df.empty:
+        os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+        with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+            f.write(
+                "<!DOCTYPE html><html><head><meta charset='UTF-8'>"
+                "<title>Media Monitor — Error</title></head><body>"
+                "<h1>No articles found</h1>"
+                "<p>The database is empty. Run the scraper first: "
+                "<code>python run.py</code></p></body></html>"
+            )
+        print("   ⚠ No articles found in database — wrote error page")
+        return
+
     now_str = datetime.now().strftime("%d %B %Y, %H:%M")
     now_short = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # Log available LLM providers (C5)
+    providers = [name for name, key in [
+        ("Gemini", GEMINI_API_KEY), ("Groq", GROQ_API_KEY),
+        ("Mistral", MISTRAL_API_KEY), ("Cerebras", CEREBRAS_API_KEY),
+    ] if key]
+    print(f"   LLM providers: {', '.join(providers) if providers else 'NONE — briefs will fail'}")
 
     clusters = cluster_stories(df)
     n_multi = len([c for c in clusters if c["multi"] and not c["noise"]])
 
     # ── Assign each cluster to a country, 'regional', or 'internacional' ──
+    # Only process multi-source, non-noise clusters (entity detection is expensive)
+    display_clusters = [cl for cl in clusters if cl["multi"] and not cl["noise"]]
     country_clusters = {c: [] for c in COUNTRIES}
     regional_clusters = []
     internacional_clusters = []
-    for cl in clusters:
-        if not cl["multi"] or cl["noise"]:
-            continue
+    for cl in display_clusters:
         target = _cluster_country_assignment(cl)
+        cl["country"] = target
         if target == "regional":
             regional_clusters.append(cl)
         elif target == "internacional":
@@ -2029,11 +2068,11 @@ def generate_dashboard():
                 cl["title"] = refined
         else:
             failed_briefs.append(cl)
-        time.sleep(2)  # rate-limit friendly
+        time.sleep(LLM_CALL_DELAY)
 
     # Retry failed briefs after a cooldown (rate limits may have cleared)
     if failed_briefs:
-        time.sleep(10)
+        time.sleep(LLM_RETRY_COOLDOWN)
         for cl in failed_briefs:
             summary, context = _generate_story_brief(cl["articles"])
             cl["summary"] = summary
@@ -2042,7 +2081,11 @@ def generate_dashboard():
                 refined = _llm_synthesize_title_from_summary(summary)
                 if refined:
                     cl["title"] = refined
-            time.sleep(3)
+            else:
+                # Fallback: synthesize a summary from headlines (B4)
+                titles = list(dict.fromkeys(a.title for a in cl["articles"]))
+                cl["summary"] = "Coverage: " + "; ".join(titles[:3])
+            time.sleep(LLM_RETRY_DELAY)
 
     # ── Build country tabs ──
     used_top_titles = set()
@@ -2062,7 +2105,7 @@ def generate_dashboard():
         country_tabs_html[country] = f"""
         <div class="top-story-line">
             <span class="ts-label">Today's top story · {flag} {name}</span>
-            <div class="ts-title">{top_title}</div>
+            <div class="ts-title">{_esc(top_title)}</div>
         </div>
 
         <div class="sec-head">Key Stories &mdash; {name} ({n_country_stories})</div>
@@ -2684,6 +2727,9 @@ a:hover {{ text-decoration: underline; }}
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }}
+    /* Show all tabs when printing */
+    .tab-nav {{ display: none; }}
+    .tab-panel {{ display: block !important; page-break-before: auto; }}
     @page {{ margin: 1cm; size: A4 portrait; }}
 }}
 </style>

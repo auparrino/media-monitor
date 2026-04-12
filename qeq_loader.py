@@ -28,6 +28,13 @@ import os
 import re
 from pathlib import Path
 
+from name_utils import (
+    NAME_CONNECTORS as _NAME_CONNECTORS,
+    NON_PERSON_TOKENS as _NON_PERSON_TOKENS,
+    looks_like_person_name as _looks_like_person_name,
+    strip_accents as _strip_accents,
+)
+
 REPO_ROOT = Path(__file__).resolve().parent
 QEQ_DIR = REPO_ROOT / "QeQ"
 CACHE_PATH = REPO_ROOT / "data" / "qeq_people.json"
@@ -49,37 +56,6 @@ _HDR_SCOPE = {"ambito"}
 
 # Files where the roster is purely informational (plan / meta docs) — skip.
 _SKIP_FILE_PATTERNS = ("plan_expansion",)
-_NAME_CONNECTORS = {
-    "da", "de", "del", "de la", "de las", "de los", "do", "dos", "das",
-    "y", "e", "van", "von",
-}
-_NON_PERSON_TOKENS = {
-    "administracion", "agencia", "alianza", "ande", "antimafia", "armadas",
-    "asociacion", "autoridad", "banco", "bloque", "camara", "capital",
-    "cartel", "centro", "clan", "club", "coalicion", "comando", "comision",
-    "comite", "comunidad", "confederacion", "congreso", "consejo",
-    "coordinadora", "corte", "cruzada", "defensa", "diario", "direccion",
-    "ejercito", "empresa", "estado", "familia", "familiares", "federacion", "fiscalia",
-    "frente", "fundacion", "gobierno", "grupo", "hermanos", "hora", "hub",
-    "abuelas", "hijos", "iglesia", "instituto", "junta", "las", "lista",
-    "los", "madre", "madres", "medio",
-    "mercosur", "ministerio", "movimiento", "municipalidad", "nacion",
-    "nomadas", "observatorio", "organismo", "organizacion", "panteras",
-    "paraguay", "argentina", "uruguay", "partido", "periodico", "policia",
-    "presidencia", "primer", "programa", "pumas", "republica", "secretaria",
-    "seleccion", "senado", "servicio", "sindicato", "sistema", "sociedad",
-    "suprema", "television", "teros", "tierra", "tribunal", "ultima",
-    "unidad", "universidad",
-}
-
-
-def _strip_accents(s: str) -> str:
-    return (
-        s.lower()
-        .replace("á", "a").replace("é", "e").replace("í", "i")
-        .replace("ó", "o").replace("ú", "u").replace("ñ", "n")
-        .replace("ü", "u")
-    )
 
 
 def _norm_header(h) -> str:
@@ -137,38 +113,6 @@ def _parse_aliases(raw: str) -> list[str]:
         if len(p) >= 3 and p.lower() not in {a.lower() for a in out}:
             out.append(p)
     return out
-
-
-def _looks_like_person_name(name: str) -> bool:
-    """Reject institutions, parties, media brands, and concept phrases."""
-    if not name or re.search(r"\d", name) or "/" in str(name):
-        return False
-    cleaned = re.sub(r"[^\w\s'.-]", " ", str(name)).strip()
-    tokens = [tok for tok in re.split(r"\s+", cleaned) if tok]
-    if len(tokens) < 2 or len(tokens) > 6:
-        return False
-
-    substantial = []
-    uppercase_like = 0
-    for token in tokens:
-        norm = _strip_accents(token)
-        if norm in _NAME_CONNECTORS:
-            continue
-        if not re.search(r"[A-Za-zÁÉÍÓÚÑáéíóúñ]", token):
-            return False
-        if norm in _NON_PERSON_TOKENS:
-            return False
-        if len(token) > 1 and token.isupper():
-            return False
-        substantial.append(token)
-        if token[0].isupper():
-            uppercase_like += 1
-
-    if len(substantial) < 2:
-        return False
-    if uppercase_like < 2:
-        return False
-    return True
 
 
 def _parse_workbook(path: Path) -> list[dict]:
@@ -314,9 +258,17 @@ def build_cache() -> list[dict]:
     (e.g. 'Javier Milei' and 'Javier Gerardo Milei' merge into one entry,
     keeping the version with the richer aliases/bio).
     """
+    # Country preference: when the same person appears with different
+    # country tags (e.g. "argentina" and "international"), prefer the
+    # Cono-Sur-specific country over "international".
+    _COUNTRY_PRIO = {"argentina": 3, "uruguay": 3, "paraguay": 3, "international": 1}
+
     entries: list[dict] = []
     idx_exact: dict[tuple, int] = {}
     idx_fl: dict[tuple, int] = {}
+    # Cross-country FL index: catches duplicates across country boundaries
+    # (e.g. Papa Francisco appearing as "argentina" and "international").
+    idx_fl_global: dict[str, int] = {}
     for path in _collect_source_files():
         for entry in _parse_workbook(path):
             key_exact = (entry["name"].lower(), entry["country"])
@@ -333,8 +285,19 @@ def build_cache() -> list[dict]:
                 _merge_into(entries[idx_fl[key_fl]], entry)
                 continue
 
+            # Try cross-country FL match — merge into existing entry,
+            # keeping the more specific country tag.
+            if fl in idx_fl_global:
+                existing = entries[idx_fl_global[fl]]
+                _merge_into(existing, entry)
+                # Prefer the more specific country
+                if _COUNTRY_PRIO.get(entry["country"], 0) > _COUNTRY_PRIO.get(existing["country"], 0):
+                    existing["country"] = entry["country"]
+                continue
+
             idx_exact[key_exact] = len(entries)
             idx_fl[key_fl] = len(entries)
+            idx_fl_global[fl] = len(entries)
             entries.append(entry)
     CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
     CACHE_PATH.write_text(

@@ -53,6 +53,20 @@ _IRRELEVANT_PATTERNS = [
     r"\bviral\b",
     r"\bmbeju\b",
     r"\bmbeyu\b",
+    # Sports match results that bypass the "deportes" keyword
+    r"\b\d+\s*-\s*\d+\b.*\b(gol|penales?|apertura|clausura|fecha\s+\d)\b",
+    r"\bcampeon\b",
+    r"\bse juega\b.*\b(primer|segundo)\b",
+    r"\bdebut[oó]?\b.*\bprimera\b",
+    r"\bgol de\b",
+    r"\bcopa libertadores\b",
+    r"\bcopa america\b",
+    r"\bcopa sudamericana\b",
+    r"\bsupercopa\b",
+    r"\b(penarol|nacional|cerro porteno|olimpia)\b.*(gano|perdio|empato|vencio)",
+    r"\bdeportivo maldonado\b",
+    r"\bciclismo\b",
+    r"\b\d+\s*fotos?\b",
 ]
 
 _CATEGORY_KEYWORDS = {
