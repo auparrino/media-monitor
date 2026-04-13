@@ -37,6 +37,16 @@ NON_PERSON_TOKENS = {
     "unidad", "universidad",
 }
 
+# Multi-word phrases that should never be treated as person names.
+# Checked against the full normalised string before token-level checks.
+NON_PERSON_PHRASES = {
+    "estados unidos", "reino unido", "naciones unidas", "santa sede",
+    "nueva zelanda", "nueva zelandia", "costa rica", "medio oriente",
+    "gran bretana", "casa blanca", "casa rosada", "torre ejecutiva",
+    "buenos aires", "ciudad del este", "punta del este",
+    "union europea", "fuerzas armadas", "corte suprema",
+}
+
 
 def strip_accents(s: str) -> str:
     """Lowercase and replace common Spanish/Portuguese diacritics."""
@@ -69,6 +79,10 @@ def looks_like_person_name(name: str) -> bool:
     if not name or re.search(r"\d", name) or "/" in str(name):
         return False
     cleaned = re.sub(r"[^\w\s'.-]", " ", str(name)).strip()
+    # Reject known multi-word non-person phrases (countries, institutions)
+    norm_full = strip_accents(re.sub(r"\s+", " ", cleaned).strip())
+    if norm_full in NON_PERSON_PHRASES:
+        return False
     tokens = [tok for tok in re.split(r"\s+", cleaned) if tok]
     if len(tokens) < 2 or len(tokens) > 6:
         return False

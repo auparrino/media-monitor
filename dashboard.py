@@ -530,6 +530,11 @@ def _match_known_person(name):
         fl_key = f"{words[0]} {words[-1]}"
         if fl_key in _KNOWN_FL_IDX:
             return _KNOWN_FL_IDX[fl_key]
+    # Single-word fallback: match via canonical last-name lookup
+    if len(words) == 1:
+        canonical = _LASTNAME_CANONICAL.get(words[0])
+        if canonical is not None:
+            return canonical[0]  # most prominent person with that surname
     return None
 
 
@@ -1205,6 +1210,12 @@ def _llm_extract_glossary(titles, clusters=None):
     _WEAK_BASES = {"last-name", "first-name", "single-alias"}
     if llm_entries and clusters is not None:
         confirmed_names = {_normalize_person_name(e["name"]) for e in llm_entries}
+        # Also add canonical roster names so that a roster entry like
+        # "Javier Gerardo Milei" isn't blocked when the LLM returned "Javier Milei".
+        for e in llm_entries:
+            match = _match_known_person(e["name"])
+            if match:
+                confirmed_names.add(_normalize_person_name(match["name"]))
 
         # Collect all title text from clusters that were NOT LLM-validated
         # so we can give weak-match people in those clusters a free pass.
@@ -1296,22 +1307,40 @@ def _llm_extract_glossary(titles, clusters=None):
 
     # ── Step 5: merge, dedupe, sort by prominence + mentions, cap ──
     merged = list(seed_entries) + cleaned_llm
-    # Sort by role prominence (presidents first), then by mention count
-    merged.sort(key=lambda e: (-_role_prominence(e), -e.get("mentions", 0)))
+
+    def _country_boost(entry):
+        """Cono Sur entries rank higher than international at same prominence."""
+        c = entry.get("country", "").lower()
+        if c in ("argentina", "uruguay", "paraguay"):
+            return 10
+        if c == "regional":
+            return 5
+        return 0  # international
+
+    merged.sort(key=lambda e: (
+        -_role_prominence(e) - _country_boost(e),
+        -e.get("mentions", 0),
+    ))
     GLOSSARY_CAP = 15
+    MAX_INTERNATIONAL = 3
     # Ensure each Cono Sur country has at least 2 entries in the glossary
     result = []
     country_counts = {"argentina": 0, "uruguay": 0, "paraguay": 0}
+    international_count = 0
     used_norms = set()
-    # First pass: fill up to cap
+    # First pass: fill up to cap, with international cap
     for e in merged:
         if len(result) >= GLOSSARY_CAP:
             break
         norm = _normalize_person_name(e.get("name", ""))
         if norm in used_norms:
             continue
-        used_norms.add(norm)
         c = e.get("country", "")
+        if c == "international":
+            if international_count >= MAX_INTERNATIONAL:
+                continue
+            international_count += 1
+        used_norms.add(norm)
         if c in country_counts:
             country_counts[c] += 1
         result.append(e)

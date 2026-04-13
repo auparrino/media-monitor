@@ -131,7 +131,6 @@ SOURCES = [
     # Paraguay — ABC Color
     {"name": "ABC Color", "country": "paraguay", "feeds": [
         {"url": "https://www.abc.com.py/arc/outboundfeeds/rss/nacionales/", "category": "politica", "type": "rss"},
-        {"url": "https://www.abc.com.py/arc/outboundfeeds/rss/economia/", "category": "economia", "type": "rss"},
         {"url": "https://www.abc.com.py/arc/outboundfeeds/rss/mundo/", "category": "internacional", "type": "rss"},
         {"url": "https://www.abc.com.py/nacionales/", "category": "politica", "type": "html"},
         {"url": "https://www.abc.com.py/economia/", "category": "economia", "type": "html"},
